@@ -7,8 +7,29 @@ extends Node
 @export var enemy_scene: PackedScene = preload("res://scenes/Snake.tscn")
 @export var enemy_head_texture: Texture2D
 @export var enemy_body_texture: Texture2D
+@export var enemy_tail_texture: Texture2D
+@export var enemy_head_transition_texture: Texture2D
+@export var enemy_tail_transition_texture: Texture2D
+@export var enemy_corner_texture: Texture2D
+@export var enemy_texture_folder: String = "res://assets/sobczi"
 @export var extension_scene: PackedScene = preload("res://scenes/Extension.tscn")
 @export var swipe_min_distance: float = 48.0
+@export var level_paths: Array[String] = [
+	"res://resources/level1.tres",
+	"res://resources/level2.tres",
+	"res://resources/level3.tres",
+	"res://resources/level4.tres",
+	"res://resources/level5.tres",
+	"res://resources/level6.tres",
+	"res://resources/level7.tres",
+	"res://resources/level8.tres",
+	"res://resources/level9.tres",
+	"res://resources/level10.tres",
+]
+@export var level_clear_delay: float = 0.7
+@export var enemy_attack_score: float = 1000.0
+@export var enemy_chase_weight: float = 6.0
+@export var enemy_space_weight: float = 2.5
 
 @onready var grid_controller: Node = get_node("../GridController")
 @onready var snake: Node2D = get_node("../Snake")
@@ -20,19 +41,87 @@ var enemy_direction_timer: float = 0.0
 var queued_direction: Vector2i = Vector2i.RIGHT
 var is_running: bool = false
 var enemy_snakes: Array[Node2D] = []
-var extensions: Array[Node2D] = []
+var extensions: Array[Node2D] = [] 
 var score: int = 0
 var active_swipe_index: int = -1
 var swipe_start_position: Vector2 = Vector2.ZERO
+var current_level_index: int = 0
+
+enum GameState {
+	RUNNING,
+	PAUSED,
+	GAME_OVER,
+	LEVEL_CLEAR,
+}
+
+var state: GameState = GameState.RUNNING
 
 func _ready() -> void:
 	await get_tree().process_frame
-	start_game()
+	apply_enemy_texture_defaults()
+	start_campaign()
+
+func apply_enemy_texture_defaults() -> void:
+	if enemy_head_texture == null:
+		enemy_head_texture = load_texture_from_folder("enemyHead.png")
+	if enemy_body_texture == null:
+		enemy_body_texture = load_texture_from_folder("enemyChest.png")
+	if enemy_tail_texture == null:
+		enemy_tail_texture = load_texture_from_folder("enemyLegs.png")
+	if enemy_head_transition_texture == null:
+		enemy_head_transition_texture = load_texture_from_folder("enemyHeadTransition.png")
+	if enemy_tail_transition_texture == null:
+		enemy_tail_transition_texture = load_texture_from_folder("enemyLegTransition.png")
+	if enemy_corner_texture == null:
+		enemy_corner_texture = enemy_body_texture
+		if enemy_corner_texture == null:
+			enemy_corner_texture = load_texture_from_folder("enemyLegTransition.png")
+
+func load_texture_from_folder(file_name: String) -> Texture2D:
+	if file_name.is_empty():
+		return null
+	var base_path: String = enemy_texture_folder.strip_edges()
+	if base_path.is_empty():
+		return null
+	if base_path.ends_with("/"):
+		base_path = base_path.trim_suffix("/")
+	var texture_path: String = "%s/%s" % [base_path, file_name]
+	if not ResourceLoader.exists(texture_path):
+		return null
+	var resource: Resource = load(texture_path)
+	if resource is Texture2D:
+		return resource as Texture2D
+	return null
+
+func start_campaign() -> void:
+	score = 0
+	current_level_index = 0
+	update_score_label()
+	if not load_level_by_index(current_level_index):
+		trigger_game_over()
 
 func start_game() -> void:
+	# Backward-compatible alias for UI hooks that call start_game().
+	start_campaign()
+
+func load_level_by_index(index: int) -> bool:
+	if level_paths.is_empty():
+		push_error("No level paths configured in GameController")
+		return false
+	if index < 0 or index >= level_paths.size():
+		return false
+
+	current_level_index = index
+	if not grid_controller.load_and_build(level_paths[index]):
+		push_error("Could not load level path: %s" % level_paths[index])
+		return false
+
+	start_level()
+	return true
+
+func start_level() -> void:
 	clear_enemy_snakes()
 	clear_extensions()
-	score = 0
 
 	snake.maze_offset = grid_controller.get_maze_offset()
 	snake.tile_size = 64
@@ -53,6 +142,7 @@ func start_game() -> void:
 
 	enemy_direction_timer = 0.0
 	is_running = true
+	state = GameState.RUNNING
 	update_score_label()
 
 	if game_over_ui:
@@ -62,7 +152,7 @@ func start_game() -> void:
 		game_over_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _process(delta: float) -> void:
-	if not is_running:
+	if not is_running or state != GameState.RUNNING:
 		return
 
 	run_player_frame(delta)
@@ -75,6 +165,38 @@ func _process(delta: float) -> void:
 		update_enemy_directions()
 
 	run_enemy_frame(delta)
+	check_level_clear_condition()
+
+func check_level_clear_condition() -> void:
+	if state != GameState.RUNNING:
+		return
+
+	var exit_cell: Vector2i = grid_controller.level.player_exit_cell
+	if exit_cell != Vector2i(-1, -1) and snake.head_cell == exit_cell:
+		trigger_level_clear()
+		return
+
+	if enemy_snakes.is_empty():
+		trigger_level_clear()
+
+func trigger_level_clear() -> void:
+	if state != GameState.RUNNING:
+		return
+
+	state = GameState.LEVEL_CLEAR
+	is_running = false
+
+	await get_tree().create_timer(level_clear_delay).timeout
+	if state != GameState.LEVEL_CLEAR:
+		return
+
+	var next_level: int = current_level_index + 1
+	if next_level >= level_paths.size():
+		start_campaign()
+		return
+
+	if not load_level_by_index(next_level):
+		trigger_game_over()
 
 func run_player_frame(delta: float) -> void:
 	snake.set_direction(queued_direction)
@@ -125,6 +247,10 @@ func spawn_enemy_snakes() -> void:
 		var enemy: Node2D = enemy_scene.instantiate()
 		enemy.head_texture = enemy_head_texture if enemy_head_texture else snake.head_texture
 		enemy.body_texture = enemy_body_texture if enemy_body_texture else snake.body_texture
+		enemy.tail_texture = enemy_tail_texture if enemy_tail_texture else enemy.body_texture
+		enemy.head_transition_texture = enemy_head_transition_texture if enemy_head_transition_texture else enemy.body_texture
+		enemy.tail_transition_texture = enemy_tail_transition_texture if enemy_tail_transition_texture else enemy.body_texture
+		enemy.corner_texture = enemy_corner_texture if enemy_corner_texture else enemy.body_texture
 		enemy.segment_scene = snake.segment_scene
 		enemy.maze_offset = grid_controller.get_maze_offset()
 		enemy.tile_size = snake.tile_size
@@ -185,16 +311,52 @@ func is_enemy_runtime_valid(enemy: Node2D) -> bool:
 
 func choose_enemy_direction(enemy: Node2D) -> Vector2i:
 	var current: Vector2i = enemy.direction
-	var candidates: Array[Vector2i] = [current, turn_left(current), turn_right(current)]
+	var candidates: Array[Vector2i] = [current, turn_left(current), turn_right(current), -current]
+	var best_direction: Vector2i = current
+	var best_score: float = -INF
 
 	for dir in candidates:
 		if not grid_controller.can_move(enemy.head_cell, dir):
 			continue
 		if snake_would_collide(enemy, dir):
 			continue
-		return dir
 
-	return current
+		var score: float = score_enemy_direction(enemy, dir)
+		if score > best_score:
+			best_score = score
+			best_direction = dir
+
+	return best_direction
+
+func score_enemy_direction(enemy: Node2D, dir: Vector2i) -> float:
+	var next_head: Vector2i = enemy.head_cell + dir
+	var score: float = randf() * 0.05
+
+	if snake.contains_cell(next_head):
+		score += enemy_attack_score
+
+	var dist_now: int = manhattan(enemy.head_cell, snake.head_cell)
+	var dist_next: int = manhattan(next_head, snake.head_cell)
+	score += float(dist_now - dist_next) * enemy_chase_weight
+
+	var open_paths: int = count_open_paths(next_head)
+	score += float(open_paths) * enemy_space_weight
+
+	if dir == enemy.direction:
+		score += 0.25
+
+	return score
+
+func manhattan(a: Vector2i, b: Vector2i) -> int:
+	return abs(a.x - b.x) + abs(a.y - b.y)
+
+func count_open_paths(cell: Vector2i) -> int:
+	var dirs: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]
+	var count: int = 0
+	for dir in dirs:
+		if grid_controller.can_move(cell, dir):
+			count += 1
+	return count
 
 func turn_left(dir: Vector2i) -> Vector2i:
 	return Vector2i(dir.y, -dir.x)
@@ -208,28 +370,81 @@ func try_advance_snake(moving_snake: Node2D) -> bool:
 		return true
 
 	var next_head_cell: Vector2i = moving_snake.head_cell + effective_dir
+
+	# Gracz zjada enemy po wejściu w jego głowę.
+	if try_consume_enemy_head(moving_snake, next_head_cell):
+		moving_snake.advance(grid_controller)
+		return true
+
+	# Enemy może zjadać gracza po wejściu w jego segment.
+	if try_enemy_consume_player(moving_snake, next_head_cell):
+		moving_snake.advance(grid_controller)
+		return true
+
+	# Rear-end ma pierwszeństwo nad zwykłą kolizją.
+	var rear_target: Node2D = find_rear_end_target_grid(moving_snake, next_head_cell, effective_dir)
+	if rear_target != null:
+		if not consume_tail_target(moving_snake, rear_target):
+			return false
+		moving_snake.advance(grid_controller)
+		return true
+
 	if check_head_collision(moving_snake, next_head_cell):
-		if try_consume_tail_from_rear(moving_snake, next_head_cell):
-			return true
 		return false
 
 	moving_snake.advance(grid_controller)
 	return true
 
+func try_enemy_consume_player(moving_snake: Node2D, next_head_cell: Vector2i) -> bool:
+	if moving_snake == snake:
+		return false
+	if not is_instance_valid(snake):
+		return false
+	if not snake.contains_cell(next_head_cell):
+		return false
+
+	# Rear-end jest obslugiwany wyzej, tu traktujemy bezposrednie "ugryzienie" gracza.
+	eliminate_snake(snake)
+	moving_snake.grow()
+	return true
+
+func try_consume_enemy_head(moving_snake: Node2D, next_head_cell: Vector2i) -> bool:
+	if moving_snake != snake:
+		return false
+
+	for enemy in enemy_snakes:
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.head_cell != next_head_cell:
+			continue
+
+		eliminate_snake(enemy)
+		moving_snake.grow()
+		score += 3
+		update_score_label()
+		return true
+
+	return false
+
 func check_head_collision(moving_snake: Node2D, head_cell: Vector2i) -> bool:
 	# W tej wersji gracz może przejechać po własnym ciele (jak w poprzednim zachowaniu projektu).
-	if moving_snake != snake and snake.contains_cell(head_cell) and not is_rear_end_contact_grid(moving_snake, snake, head_cell):
+	if moving_snake != snake and snake.contains_cell(head_cell):
 		return true
 
 	for enemy in enemy_snakes:
 		if not is_instance_valid(enemy) or enemy == moving_snake:
 			continue
-		if enemy.contains_cell(head_cell) and not is_rear_end_contact_grid(moving_snake, enemy, head_cell):
+		if enemy.contains_cell(head_cell):
 			return true
 
 	return false
 
-func is_rear_end_contact_grid(moving_snake: Node2D, target_snake: Node2D, next_head_cell: Vector2i) -> bool:
+func is_rear_end_contact_grid(
+	moving_snake: Node2D,
+	target_snake: Node2D,
+	next_head_cell: Vector2i,
+	moving_direction: Vector2i = Vector2i.ZERO
+) -> bool:
 	if target_snake == moving_snake:
 		return false
 	if target_snake.segment_cells.is_empty():
@@ -243,15 +458,12 @@ func is_rear_end_contact_grid(moving_snake: Node2D, target_snake: Node2D, next_h
 	if target_snake.segment_cells.size() >= 2:
 		tail_prev_cell = target_snake.segment_cells[-2]
 
-	var tail_direction: Vector2i = tail_cell - tail_prev_cell
-	var moving_direction: Vector2i = moving_snake.direction
-	return Vector2(tail_direction).dot(Vector2(moving_direction)) > 0
+	# Kierunek "do przodu" ofiary na ogonie: od ogona do poprzedniego segmentu.
+	var tail_direction: Vector2i = tail_prev_cell - tail_cell
+	var attacker_dir: Vector2i = moving_direction if moving_direction != Vector2i.ZERO else moving_snake.direction
+	return Vector2(tail_direction).dot(Vector2(attacker_dir)) > 0
 
-func try_consume_tail_from_rear(moving_snake: Node2D, next_head_cell: Vector2i) -> bool:
-	var target: Node2D = find_rear_end_target_grid(moving_snake, next_head_cell)
-	if target == null:
-		return false
-
+func consume_tail_target(moving_snake: Node2D, target: Node2D) -> bool:
 	if target.segment_cells.size() <= 1:
 		eliminate_snake(target)
 	else:
@@ -264,25 +476,32 @@ func try_consume_tail_from_rear(moving_snake: Node2D, next_head_cell: Vector2i) 
 		update_score_label()
 	return true
 
-func find_rear_end_target_grid(moving_snake: Node2D, next_head_cell: Vector2i) -> Node2D:
-	if moving_snake != snake and is_rear_end_contact_grid(moving_snake, snake, next_head_cell):
+func find_rear_end_target_grid(
+	moving_snake: Node2D,
+	next_head_cell: Vector2i,
+	moving_direction: Vector2i = Vector2i.ZERO
+) -> Node2D:
+	if moving_snake != snake and is_rear_end_contact_grid(moving_snake, snake, next_head_cell, moving_direction):
 		return snake
 
 	for enemy in enemy_snakes:
 		if not is_instance_valid(enemy):
 			continue
-		if is_rear_end_contact_grid(moving_snake, enemy, next_head_cell):
+		if is_rear_end_contact_grid(moving_snake, enemy, next_head_cell, moving_direction):
 			return enemy
 
 	return null
 
 func snake_would_collide(enemy: Node2D, dir: Vector2i) -> bool:
 	var next_head: Vector2i = enemy.head_cell + dir
-	if snake.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, snake, next_head):
+	if enemy.contains_cell(next_head):
 		return true
+	if snake.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, snake, next_head, dir):
+		# Enemy ma prawo zaatakowac gracza, wiec to nie jest blokada trasy.
+		return false
 	for other_enemy in enemy_snakes:
 		if is_instance_valid(other_enemy) and other_enemy != enemy:
-			if other_enemy.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, other_enemy, next_head):
+			if other_enemy.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, other_enemy, next_head, dir):
 				return true
 	return false
 
@@ -355,6 +574,7 @@ func update_score_label() -> void:
 func trigger_game_over() -> void:
 	game_over_ui.visible = true
 	is_running = false
+	state = GameState.GAME_OVER
 
 func queue_direction(new_direction: Vector2i) -> void:
 	if new_direction == Vector2i.ZERO:

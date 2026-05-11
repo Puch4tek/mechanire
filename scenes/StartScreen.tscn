@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://br2p3u82l6er7"]
 
 [ext_resource type="Script" uid="uid://cr8n7jol0v3bj" path="res://scripts/StartScreen.gd" id="1_nj7f0"]
-[ext_resource type="Texture2D" uid="uid://c7s4wk5fqt5li" path="res://assets/logomwchanik-1.jpg" id="1_pswtb"]
+[ext_resource type="Texture2D" uid="uid://b25rklyhe3e72" path="res://assets/mechanire_ekran_start.PNG" id="2_pswtb"]
 
 [node name="StartScreen" type="Control" unique_id=1485098784]
 layout_mode = 3
@@ -13,57 +13,25 @@ grow_vertical = 2
 script = ExtResource("1_nj7f0")
 
 [node name="Background" type="TextureRect" parent="." unique_id=1664327970]
+z_index = -10
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_pswtb")
 
-[node name="SchoolLogo" type="TextureRect" parent="." unique_id=777273006]
+[node name="Button" type="Button" parent="." unique_id=415335632]
+modulate = Color(1, 1, 1, 0)
+z_index = 10
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -50.0
-offset_top = -50.0
-offset_right = 50.0
-offset_bottom = 50.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("1_pswtb")
-expand_mode = 1
+mouse_filter = 0
 
-[node name="Name" type="RichTextLabel" parent="." unique_id=735851431]
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -356.0
-offset_top = 82.0
-offset_right = 356.0
-offset_bottom = 151.0
-grow_horizontal = 2
-theme_override_font_sizes/normal_font_size = 50
-text = "Zespół Szkół Politechnicznych"
-fit_content = true
-
-[node name="PressAnywhere" type="RichTextLabel" parent="." unique_id=1962911902]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -205.0
-offset_top = -186.0
-offset_right = 205.0
-offset_bottom = -142.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_font_sizes/normal_font_size = 26
-text = "Naciśnij gdziekolwiek aby zacząć"
-
-[connection signal="gui_input" from="." to="." method="_on_gui_input"]
+[connection signal="pressed" from="Button" to="." method="_on_button_pressed"]

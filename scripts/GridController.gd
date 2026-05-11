@@ -25,6 +25,15 @@ func load_level(path: String) -> void:
 		push_error("Failed to load level: " + path)
 		return
 
+func load_and_build(path: String) -> bool:
+	load_level(path)
+	if level == null:
+		return false
+	build_grid()
+	render_tilemap()
+	center_maze()
+	return true
+
 func build_grid():
 	grid.clear()
 	for y in range(level.height):
@@ -66,17 +75,10 @@ func center_maze():
 	tilemap.position = Vector2(offset_x, offset_y)
 
 func _ready() -> void:
-	load_level("res://resources/level1.tres")
-	if level == null:
+	if not load_and_build("res://resources/level1.tres"):
 		push_error("Failed to load level, cannot proceed")
 		return
-	build_grid()
-	render_tilemap()
-	center_maze()
 	get_viewport().size_changed.connect(center_maze)
-	print(level.width)
-	print(level.height)
-	print(level.cells_2d.size())
 
 # Dodaj na końcu klasy, przed _process
 

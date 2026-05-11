@@ -13,7 +13,7 @@ config_version=5
 config/name="Serpentine-Mechanik"
 run/main_scene="uid://br2p3u82l6er7"
 config/features=PackedStringArray("4.6", "Mobile")
-config/icon="res://icon.svg"
+config/icon="uid://82bqjy2m6egc"
 
 [autoload]
 

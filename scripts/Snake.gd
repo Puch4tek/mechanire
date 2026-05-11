@@ -2,9 +2,14 @@ extends Node2D
 
 @export var head_texture: Texture2D
 @export var body_texture: Texture2D
+@export var tail_texture: Texture2D
+@export var head_transition_texture: Texture2D
+@export var tail_transition_texture: Texture2D
+@export var corner_texture: Texture2D
 @export var segment_scene: PackedScene
 @export var tile_size: int = 64
 @export var move_speed_px: float = 220.0
+@export var tail_rotation_offset: float = PI
 
 var segments: Array[Node2D] = []
 var segment_cells: Array[Vector2i] = []
@@ -27,6 +32,10 @@ func world_to_cell(world_pos: Vector2) -> Vector2i:
 		int(floor(local.y / float(tile_size)))
 	)
 
+func _configure_segment(seg: Node2D) -> void:
+	if seg.has_method("set_tile_size"):
+		seg.set_tile_size(float(tile_size))
+
 func spawn_snake(start: Vector2i, length: int = 3, initial_direction: Vector2i = direction) -> void:
 	for seg in segments:
 		seg.queue_free()
@@ -44,16 +53,14 @@ func spawn_snake(start: Vector2i, length: int = 3, initial_direction: Vector2i =
 	for i in range(max(1, length)):
 		var cell: Vector2i = start - initial_direction * i
 		var seg: Node2D = segment_scene.instantiate()
+		_configure_segment(seg)
 		seg.position = grid_to_world(cell)
 		add_child(seg)
 
-		if i == 0:
-			seg.set_head(head_texture)
-		else:
-			seg.set_body(body_texture)
-
 		segments.append(seg)
 		segment_cells.append(cell)
+
+	update_positions()
 
 func grow() -> void:
 	if segment_cells.is_empty():
@@ -61,12 +68,13 @@ func grow() -> void:
 
 	var tail_cell: Vector2i = segment_cells[-1]
 	var seg: Node2D = segment_scene.instantiate()
+	_configure_segment(seg)
 	seg.position = grid_to_world(tail_cell)
 	add_child(seg)
-	seg.set_body(body_texture)
 
 	segments.append(seg)
 	segment_cells.append(tail_cell)
+	update_positions()
 
 func shrink_tail(count: int = 1, min_length: int = 1) -> int:
 	var removed: int = 0
@@ -83,6 +91,8 @@ func shrink_tail(count: int = 1, min_length: int = 1) -> int:
 		segment_cells.remove_at(tail_index)
 		removed += 1
 
+	if removed > 0:
+		update_positions()
 	return removed
 
 func set_direction(new_dir: Vector2i) -> void:
@@ -152,10 +162,125 @@ func get_predicted_head_world(delta: float, for_dir: Vector2i = direction) -> Ve
 	var next_cell: Vector2i = head_cell + for_dir
 	return grid_to_world(next_cell)
 
+func _dir_to_rotation(dir: Vector2i) -> float:
+	# Wszystkie tekstury bazowe traktujemy jako "do gory" (UP).
+	if dir == Vector2i.UP:
+		return 0.0
+	if dir == Vector2i.RIGHT:
+		return PI * 0.5
+	if dir == Vector2i.DOWN:
+		return PI
+	if dir == Vector2i.LEFT:
+		return -PI * 0.5
+	return 0.0
+
+func _corner_rotation(dir_a: Vector2i, dir_b: Vector2i) -> float:
+	# Bazowa orientacja narożnika: połączenie UP + RIGHT.
+	var has_right: bool = dir_a == Vector2i.RIGHT or dir_b == Vector2i.RIGHT
+	var has_down: bool = dir_a == Vector2i.DOWN or dir_b == Vector2i.DOWN
+	var has_left: bool = dir_a == Vector2i.LEFT or dir_b == Vector2i.LEFT
+	var has_up: bool = dir_a == Vector2i.UP or dir_b == Vector2i.UP
+
+	if has_up and has_right:
+		return 0.0
+	if has_right and has_down:
+		return PI * 0.5
+	if has_down and has_left:
+		return PI
+	if has_left and has_up:
+		return -PI * 0.5
+	return 0.0
+
+func _transition_corner_transform(dir_a: Vector2i, dir_b: Vector2i) -> Dictionary:
+	# Bazowa orientacja transition PNG: zakret UP + LEFT.
+	var has_right: bool = dir_a == Vector2i.RIGHT or dir_b == Vector2i.RIGHT
+	var has_down: bool = dir_a == Vector2i.DOWN or dir_b == Vector2i.DOWN
+	var has_left: bool = dir_a == Vector2i.LEFT or dir_b == Vector2i.LEFT
+	var has_up: bool = dir_a == Vector2i.UP or dir_b == Vector2i.UP
+
+	if has_up and has_left:
+		return {"rotation": 0.0, "flip_h": false, "flip_v": false}
+	if has_up and has_right:
+		return {"rotation": 0.0, "flip_h": true, "flip_v": false}
+	if has_down and has_left:
+		return {"rotation": PI, "flip_h": true, "flip_v": false}
+	if has_down and has_right:
+		return {"rotation": PI, "flip_h": false, "flip_v": false}
+
+	return {"rotation": 0.0, "flip_h": false, "flip_v": false}
+
+func _head_transition_corner_transform(dir_a: Vector2i, dir_b: Vector2i) -> Dictionary:
+	# Bazowa orientacja head->chest PNG: zakret DOWN + RIGHT (bottom -> right).
+	var has_right: bool = dir_a == Vector2i.RIGHT or dir_b == Vector2i.RIGHT
+	var has_down: bool = dir_a == Vector2i.DOWN or dir_b == Vector2i.DOWN
+	var has_left: bool = dir_a == Vector2i.LEFT or dir_b == Vector2i.LEFT
+	var has_up: bool = dir_a == Vector2i.UP or dir_b == Vector2i.UP
+
+	if has_down and has_right:
+		return {"rotation": 0.0, "flip_h": false, "flip_v": false}
+	if has_down and has_left:
+		return {"rotation": PI * 0.5, "flip_h": false, "flip_v": false}
+	if has_left and has_up:
+		return {"rotation": PI, "flip_h": false, "flip_v": false}
+	if has_up and has_right:
+		return {"rotation": -PI * 0.5, "flip_h": false, "flip_v": false}
+
+	return {"rotation": 0.0, "flip_h": false, "flip_v": false}
+
 func update_positions() -> void:
 	for i in range(segments.size()):
-		segments[i].position = grid_to_world(segment_cells[i])
-		if i == 0:
-			segments[i].set_head(head_texture)
+		var segment: Node2D = segments[i]
+		segment.position = grid_to_world(segment_cells[i])
+
+		var texture_to_use: Texture2D = body_texture
+		var rotation_angle: float = 0.0
+		var flip_h: bool = false
+		var flip_v: bool = false
+
+		if segments.size() == 1:
+			texture_to_use = head_texture if head_texture else body_texture
+			rotation_angle = _dir_to_rotation(direction)
+		elif i == 0:
+			var neck: Vector2i = segment_cells[1]
+			var head_dir: Vector2i = segment_cells[0] - neck
+			texture_to_use = head_texture if head_texture else body_texture
+			rotation_angle = _dir_to_rotation(head_dir)
+		elif i == segments.size() - 1:
+			var prev: Vector2i = segment_cells[i - 1]
+			var tail_dir: Vector2i = segment_cells[i] - prev
+			texture_to_use = tail_texture if tail_texture else body_texture
+			rotation_angle = _dir_to_rotation(tail_dir) + tail_rotation_offset
 		else:
-			segments[i].set_body(body_texture)
+			var prev_cell: Vector2i = segment_cells[i - 1]
+			var curr_cell: Vector2i = segment_cells[i]
+			var next_cell: Vector2i = segment_cells[i + 1]
+			var dir_to_prev: Vector2i = prev_cell - curr_cell
+			var dir_to_next: Vector2i = next_cell - curr_cell
+			var is_head_bridge: bool = i == 1 and head_transition_texture != null
+			var is_tail_bridge: bool = i == segments.size() - 2 and tail_transition_texture != null
+			var bridge_texture: Texture2D = null
+			if is_head_bridge:
+				bridge_texture = head_transition_texture
+			elif is_tail_bridge:
+				bridge_texture = tail_transition_texture
+
+			if dir_to_prev == -dir_to_next:
+				# Na prostych odcinkach zawsze zwykle "chest" (body), bez transition.
+				texture_to_use = body_texture
+				rotation_angle = _dir_to_rotation(dir_to_prev)
+			else:
+				if bridge_texture:
+					texture_to_use = bridge_texture
+					var transform: Dictionary
+					if is_head_bridge:
+						transform = _head_transition_corner_transform(dir_to_prev, dir_to_next)
+					else:
+						transform = _transition_corner_transform(dir_to_prev, dir_to_next)
+					rotation_angle = transform.get("rotation", 0.0)
+					flip_h = transform.get("flip_h", false)
+					flip_v = transform.get("flip_v", false)
+				else:
+					texture_to_use = corner_texture if corner_texture else body_texture
+					rotation_angle = _corner_rotation(dir_to_prev, dir_to_next)
+
+		segment.set_visual(texture_to_use, rotation_angle, flip_h, flip_v)
