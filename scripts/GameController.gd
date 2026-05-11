@@ -12,6 +12,13 @@ extends Node
 @export var enemy_tail_transition_texture: Texture2D
 @export var enemy_corner_texture: Texture2D
 @export var enemy_texture_folder: String = "res://assets/sobczi"
+@export var player_head_texture: Texture2D
+@export var player_body_texture: Texture2D
+@export var player_tail_texture: Texture2D
+@export var player_head_transition_texture: Texture2D
+@export var player_tail_transition_texture: Texture2D
+@export var player_corner_texture: Texture2D
+@export var player_texture_folder: String = "res://assets/golona"
 @export var extension_scene: PackedScene = preload("res://scenes/Extension.tscn")
 @export var swipe_min_distance: float = 48.0
 @export var level_paths: Array[String] = [
@@ -58,29 +65,45 @@ var state: GameState = GameState.RUNNING
 
 func _ready() -> void:
 	await get_tree().process_frame
+	apply_player_texture_defaults()
 	apply_enemy_texture_defaults()
 	start_campaign()
 
+func apply_player_texture_defaults() -> void:
+	if player_head_texture == null:
+		player_head_texture = load_texture_from_folder(player_texture_folder, "playerHead.png")
+	if player_body_texture == null:
+		player_body_texture = load_texture_from_folder(player_texture_folder, "playerChest.png")
+	if player_tail_texture == null:
+		player_tail_texture = load_texture_from_folder(player_texture_folder, "playerLegs.png")
+	if player_head_transition_texture == null:
+		# Nazwa pliku w assets ma literowke: Transistion.
+		player_head_transition_texture = load_texture_from_folder(player_texture_folder, "playerHeadTransistion.PNG")
+	if player_tail_transition_texture == null:
+		player_tail_transition_texture = load_texture_from_folder(player_texture_folder, "playerLegTransition.PNG")
+	if player_corner_texture == null:
+		player_corner_texture = player_body_texture
+
 func apply_enemy_texture_defaults() -> void:
 	if enemy_head_texture == null:
-		enemy_head_texture = load_texture_from_folder("enemyHead.png")
+		enemy_head_texture = load_texture_from_folder(enemy_texture_folder, "enemyHead.png")
 	if enemy_body_texture == null:
-		enemy_body_texture = load_texture_from_folder("enemyChest.png")
+		enemy_body_texture = load_texture_from_folder(enemy_texture_folder, "enemyChest.png")
 	if enemy_tail_texture == null:
-		enemy_tail_texture = load_texture_from_folder("enemyLegs.png")
+		enemy_tail_texture = load_texture_from_folder(enemy_texture_folder, "enemyLegs.png")
 	if enemy_head_transition_texture == null:
-		enemy_head_transition_texture = load_texture_from_folder("enemyHeadTransition.png")
+		enemy_head_transition_texture = load_texture_from_folder(enemy_texture_folder, "enemyHeadTransition.png")
 	if enemy_tail_transition_texture == null:
-		enemy_tail_transition_texture = load_texture_from_folder("enemyLegTransition.png")
+		enemy_tail_transition_texture = load_texture_from_folder(enemy_texture_folder, "enemyLegTransition.png")
 	if enemy_corner_texture == null:
 		enemy_corner_texture = enemy_body_texture
 		if enemy_corner_texture == null:
-			enemy_corner_texture = load_texture_from_folder("enemyLegTransition.png")
+			enemy_corner_texture = load_texture_from_folder(enemy_texture_folder, "enemyLegTransition.png")
 
-func load_texture_from_folder(file_name: String) -> Texture2D:
+func load_texture_from_folder(folder_path: String, file_name: String) -> Texture2D:
 	if file_name.is_empty():
 		return null
-	var base_path: String = enemy_texture_folder.strip_edges()
+	var base_path: String = folder_path.strip_edges()
 	if base_path.is_empty():
 		return null
 	if base_path.ends_with("/"):
@@ -126,6 +149,12 @@ func start_level() -> void:
 	snake.maze_offset = grid_controller.get_maze_offset()
 	snake.tile_size = 64
 	snake.move_speed_px = player_speed_px
+	snake.head_texture = player_head_texture if player_head_texture else snake.head_texture
+	snake.body_texture = player_body_texture if player_body_texture else snake.body_texture
+	snake.tail_texture = player_tail_texture if player_tail_texture else snake.body_texture
+	snake.head_transition_texture = player_head_transition_texture if player_head_transition_texture else snake.body_texture
+	snake.tail_transition_texture = player_tail_transition_texture if player_tail_transition_texture else snake.body_texture
+	snake.corner_texture = player_corner_texture if player_corner_texture else snake.body_texture
 
 	var player_spawn_box: Vector2i = grid_controller.level.player_spawn_box
 	var player_spawn_dir: Vector2i = grid_controller.level.player_spawn_direction
