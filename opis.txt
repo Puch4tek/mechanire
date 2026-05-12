@@ -1,0 +1,18 @@
+short - Retro arcade w klimacie 8-bitowych klasyków z dynamiczną rozgrywką.
+
+Mechanire to dynamiczna gra arcade inspirowana klasycznymi produkcjami z ery komputerów 8-bitowych.
+
+Przejmij kontrolę nad mechanicznym wężem i przemierzaj pełne niebezpieczeństw labirynty. Zbieraj elementy, wydłużaj swoją konstrukcję i unikaj kolizji w szybkiej, zręcznościowej rozgrywce utrzymanej w retro klimacie.
+
+Gra łączy minimalistyczny styl retro z nowoczesnym, płynnym sterowaniem dostosowanym do urządzeń mobilnych.
+
+Cechy gry:
+
+klasyczna rozgrywka arcade,
+retro grafika inspirowana erą 8-bitów,
+proste i responsywne sterowanie,
+szybka i wymagająca akcja,
+możliwość gry offline,
+brak reklam i śledzenia użytkownika.
+
+Mechanire to idealna propozycja dla fanów oldschoolowych gier zręcznościowych i retro klimatu.
