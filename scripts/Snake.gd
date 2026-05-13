@@ -175,19 +175,19 @@ func _dir_to_rotation(dir: Vector2i) -> float:
 	return 0.0
 
 func _corner_rotation(dir_a: Vector2i, dir_b: Vector2i) -> float:
-	# Bazowa orientacja narożnika: połączenie UP + RIGHT.
+	# Bazowa orientacja narożnika: połączenie LEFT + UP.
 	var has_right: bool = dir_a == Vector2i.RIGHT or dir_b == Vector2i.RIGHT
 	var has_down: bool = dir_a == Vector2i.DOWN or dir_b == Vector2i.DOWN
 	var has_left: bool = dir_a == Vector2i.LEFT or dir_b == Vector2i.LEFT
 	var has_up: bool = dir_a == Vector2i.UP or dir_b == Vector2i.UP
 
-	if has_up and has_right:
-		return 0.0
-	if has_right and has_down:
-		return PI * 0.5
-	if has_down and has_left:
-		return PI
 	if has_left and has_up:
+		return 0.0
+	if has_up and has_right:
+		return PI * 0.5
+	if has_right and has_down:
+		return PI
+	if has_down and has_left:
 		return -PI * 0.5
 	return 0.0
 

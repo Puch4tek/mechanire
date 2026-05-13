@@ -15,6 +15,7 @@
 [ext_resource type="Texture2D" path="res://assets/sobczi/enemyLegs.png" id="14_enemy_tail"]
 [ext_resource type="Texture2D" path="res://assets/sobczi/enemyLegTransition.png" id="15_enemy_corner"]
 [ext_resource type="Texture2D" path="res://assets/sobczi/enemyHeadTransition.png" id="16_enemy_head_transition"]
+[ext_resource type="Texture2D" path="res://assets/sobczi/enemyChestTransition.png" id="17_enemy_chest_transition"]
 
 [node name="Game" type="Node2D" unique_id=757534878]
 script = ExtResource("1_s0nni")
@@ -26,7 +27,7 @@ body_texture = ExtResource("13_enemy_body")
 tail_texture = ExtResource("14_enemy_tail")
 head_transition_texture = ExtResource("16_enemy_head_transition")
 tail_transition_texture = ExtResource("15_enemy_corner")
-corner_texture = ExtResource("13_enemy_body")
+corner_texture = ExtResource("17_enemy_chest_transition")
 segment_scene = ExtResource("11_2rd6h")
 
 [node name="Maze" type="TileMapLayer" parent="." unique_id=538431606]
@@ -93,7 +94,7 @@ enemy_body_texture = ExtResource("13_enemy_body")
 enemy_tail_texture = ExtResource("14_enemy_tail")
 enemy_head_transition_texture = ExtResource("16_enemy_head_transition")
 enemy_tail_transition_texture = ExtResource("15_enemy_corner")
-enemy_corner_texture = ExtResource("13_enemy_body")
+enemy_corner_texture = ExtResource("17_enemy_chest_transition")
 
 [node name="GridController" type="Node" parent="." unique_id=1804560589]
 script = ExtResource("4_78awf")

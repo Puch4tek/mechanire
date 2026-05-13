@@ -53,6 +53,7 @@ var score: int = 0
 var active_swipe_index: int = -1
 var swipe_start_position: Vector2 = Vector2.ZERO
 var current_level_index: int = 0
+var level_started_with_enemies: bool = false
 
 enum GameState {
 	RUNNING,
@@ -82,7 +83,9 @@ func apply_player_texture_defaults() -> void:
 	if player_tail_transition_texture == null:
 		player_tail_transition_texture = load_texture_from_folder(player_texture_folder, "playerLegTransition.PNG")
 	if player_corner_texture == null:
-		player_corner_texture = player_body_texture
+		player_corner_texture = load_texture_from_folder(player_texture_folder, "playerChestTransition.PNG")
+		if player_corner_texture == null:
+			player_corner_texture = player_body_texture
 
 func apply_enemy_texture_defaults() -> void:
 	if enemy_head_texture == null:
@@ -96,9 +99,9 @@ func apply_enemy_texture_defaults() -> void:
 	if enemy_tail_transition_texture == null:
 		enemy_tail_transition_texture = load_texture_from_folder(enemy_texture_folder, "enemyLegTransition.png")
 	if enemy_corner_texture == null:
-		enemy_corner_texture = enemy_body_texture
+		enemy_corner_texture = load_texture_from_folder(enemy_texture_folder, "enemyChestTransition.png")
 		if enemy_corner_texture == null:
-			enemy_corner_texture = load_texture_from_folder(enemy_texture_folder, "enemyLegTransition.png")
+			enemy_corner_texture = enemy_body_texture
 
 func load_texture_from_folder(folder_path: String, file_name: String) -> Texture2D:
 	if file_name.is_empty():
@@ -167,6 +170,7 @@ func start_level() -> void:
 	snake.set_direction(queued_direction)
 
 	spawn_enemy_snakes()
+	level_started_with_enemies = enemy_snakes.size() > 0
 	spawn_extension()
 
 	enemy_direction_timer = 0.0
@@ -205,7 +209,7 @@ func check_level_clear_condition() -> void:
 		trigger_level_clear()
 		return
 
-	if enemy_snakes.is_empty():
+	if level_started_with_enemies and enemy_snakes.is_empty():
 		trigger_level_clear()
 
 func trigger_level_clear() -> void:
@@ -400,16 +404,6 @@ func try_advance_snake(moving_snake: Node2D) -> bool:
 
 	var next_head_cell: Vector2i = moving_snake.head_cell + effective_dir
 
-	# Gracz zjada enemy po wejściu w jego głowę.
-	if try_consume_enemy_head(moving_snake, next_head_cell):
-		moving_snake.advance(grid_controller)
-		return true
-
-	# Enemy może zjadać gracza po wejściu w jego segment.
-	if try_enemy_consume_player(moving_snake, next_head_cell):
-		moving_snake.advance(grid_controller)
-		return true
-
 	# Rear-end ma pierwszeństwo nad zwykłą kolizją.
 	var rear_target: Node2D = find_rear_end_target_grid(moving_snake, next_head_cell, effective_dir)
 	if rear_target != null:
@@ -423,37 +417,6 @@ func try_advance_snake(moving_snake: Node2D) -> bool:
 
 	moving_snake.advance(grid_controller)
 	return true
-
-func try_enemy_consume_player(moving_snake: Node2D, next_head_cell: Vector2i) -> bool:
-	if moving_snake == snake:
-		return false
-	if not is_instance_valid(snake):
-		return false
-	if not snake.contains_cell(next_head_cell):
-		return false
-
-	# Rear-end jest obslugiwany wyzej, tu traktujemy bezposrednie "ugryzienie" gracza.
-	eliminate_snake(snake)
-	moving_snake.grow()
-	return true
-
-func try_consume_enemy_head(moving_snake: Node2D, next_head_cell: Vector2i) -> bool:
-	if moving_snake != snake:
-		return false
-
-	for enemy in enemy_snakes:
-		if not is_instance_valid(enemy):
-			continue
-		if enemy.head_cell != next_head_cell:
-			continue
-
-		eliminate_snake(enemy)
-		moving_snake.grow()
-		score += 3
-		update_score_label()
-		return true
-
-	return false
 
 func check_head_collision(moving_snake: Node2D, head_cell: Vector2i) -> bool:
 	# W tej wersji gracz może przejechać po własnym ciele (jak w poprzednim zachowaniu projektu).
@@ -526,8 +489,7 @@ func snake_would_collide(enemy: Node2D, dir: Vector2i) -> bool:
 	if enemy.contains_cell(next_head):
 		return true
 	if snake.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, snake, next_head, dir):
-		# Enemy ma prawo zaatakowac gracza, wiec to nie jest blokada trasy.
-		return false
+		return true
 	for other_enemy in enemy_snakes:
 		if is_instance_valid(other_enemy) and other_enemy != enemy:
 			if other_enemy.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, other_enemy, next_head, dir):
