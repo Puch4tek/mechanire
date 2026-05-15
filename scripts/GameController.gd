@@ -204,10 +204,6 @@ func check_level_clear_condition() -> void:
 	if state != GameState.RUNNING:
 		return
 
-	var exit_cell: Vector2i = grid_controller.level.player_exit_cell
-	if exit_cell != Vector2i(-1, -1) and snake.head_cell == exit_cell:
-		trigger_level_clear()
-		return
 
 	if level_started_with_enemies and enemy_snakes.is_empty():
 		trigger_level_clear()

@@ -7,15 +7,15 @@
 [ext_resource type="Script" uid="uid://c0o5l4pw2gi7a" path="res://scripts/GridController.gd" id="4_78awf"]
 [ext_resource type="PackedScene" uid="uid://dnvx0si5iroa0" path="res://scenes/GameOver.tscn" id="4_400sg"]
 [ext_resource type="PackedScene" uid="uid://c4os0jvx8a3mg" path="res://scenes/Snake.tscn" id="8_400sg"]
-[ext_resource type="Texture2D" uid="uid://c0q754skynf3v" path="res://assets/64.png" id="9_3xj3m"]
-[ext_resource type="Texture2D" uid="uid://dw10miaj6ut86" path="res://assets/64-2.png" id="9_mcffj"]
 [ext_resource type="PackedScene" uid="uid://b0qi2v3332eln" path="res://scenes/SnakeSegment.tscn" id="11_2rd6h"]
-[ext_resource type="Texture2D" path="res://assets/sobczi/enemyHead.png" id="12_enemy_head"]
-[ext_resource type="Texture2D" path="res://assets/sobczi/enemyChest.png" id="13_enemy_body"]
-[ext_resource type="Texture2D" path="res://assets/sobczi/enemyLegs.png" id="14_enemy_tail"]
-[ext_resource type="Texture2D" path="res://assets/sobczi/enemyLegTransition.png" id="15_enemy_corner"]
-[ext_resource type="Texture2D" path="res://assets/sobczi/enemyHeadTransition.png" id="16_enemy_head_transition"]
-[ext_resource type="Texture2D" path="res://assets/sobczi/enemyChestTransition.png" id="17_enemy_chest_transition"]
+[ext_resource type="Texture2D" uid="uid://gf8pv3o403qn" path="res://assets/reset.png" id="11_y5y3l"]
+[ext_resource type="Texture2D" uid="uid://cvnxdyuv3ci8w" path="res://assets/sobczi/enemyHead.png" id="12_enemy_head"]
+[ext_resource type="Texture2D" uid="uid://dx1aetejjtp5x" path="res://assets/pauza.png" id="12_vjgi4"]
+[ext_resource type="Texture2D" uid="uid://dqtyn6hpvlkeo" path="res://assets/sobczi/enemyChest.png" id="13_enemy_body"]
+[ext_resource type="Texture2D" uid="uid://0nk137ni3nqk" path="res://assets/sobczi/enemyLegs.png" id="14_enemy_tail"]
+[ext_resource type="Texture2D" uid="uid://bswbogv0orux6" path="res://assets/sobczi/enemyLegTransition.png" id="15_enemy_corner"]
+[ext_resource type="Texture2D" uid="uid://x1c18boghgcw" path="res://assets/sobczi/enemyHeadTransition.png" id="16_enemy_head_transition"]
+[ext_resource type="Texture2D" uid="uid://dtvobvu0esm56" path="res://assets/sobczi/enemyChestTransition.png" id="17_enemy_chest_transition"]
 
 [node name="Game" type="Node2D" unique_id=757534878]
 script = ExtResource("1_s0nni")
@@ -48,34 +48,40 @@ mouse_filter = 1
 
 [node name="ResetButton" type="Button" parent="CanvasLayer/Control" unique_id=1394376547]
 layout_mode = 1
-anchors_preset = 1
+anchors_preset = -1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -133.0
+offset_left = -118.0
 offset_top = 10.0
-offset_right = -82.0
-offset_bottom = 41.0
+offset_right = -29.0
+offset_bottom = 98.0
 grow_horizontal = 0
-text = "Reset"
+icon = ExtResource("11_y5y3l")
+flat = true
+icon_alignment = 1
+expand_icon = true
 
 [node name="PauseButton" type="Button" parent="CanvasLayer/Control" unique_id=1813307072]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -196.0
+offset_left = -208.0
 offset_top = 10.0
-offset_right = -141.0
-offset_bottom = 41.0
+offset_right = -120.0
+offset_bottom = 98.0
 grow_horizontal = 0
-text = "Pauza"
+icon = ExtResource("12_vjgi4")
+flat = true
+icon_alignment = 1
+expand_icon = true
 
 [node name="ScoreLabel" type="Label" parent="CanvasLayer/Control" unique_id=1234567891]
 layout_mode = 1
-offset_left = 10.0
+offset_left = 58.0
 offset_top = 10.0
-offset_right = 200.0
-offset_bottom = 41.0
+offset_right = 248.0
+offset_bottom = 44.0
 theme_override_font_sizes/font_size = 24
 text = "Score: 0"
 

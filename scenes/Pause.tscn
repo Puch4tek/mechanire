@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://pa5bvybpxx80"]
 
 [ext_resource type="Script" uid="uid://cbkaq0fpkkjr7" path="res://scripts/pause.gd" id="1_0ep5p"]
+[ext_resource type="Texture2D" uid="uid://bubtn3rneulkm" path="res://assets/start.png" id="2_wcpj6"]
 
 [node name="Pause" type="Control" unique_id=1084391853]
 layout_mode = 3
@@ -41,11 +42,14 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -250.0
-offset_top = -266.0
+offset_top = -315.0
 offset_right = 250.0
-offset_bottom = -166.0
+offset_bottom = -106.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "Wznów"
+icon = ExtResource("2_wcpj6")
+flat = true
+icon_alignment = 1
+expand_icon = true
 
 [connection signal="pressed" from="Button" to="." method="_on_button_pressed"]
