@@ -41,6 +41,10 @@ func configure_background_display() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	background.stretch_mode = TextureRect.STRETCH_KEEP
+	background.anchor_left = 0.0
+	background.anchor_top = 0.0
+	background.anchor_right = 0.0
+	background.anchor_bottom = 0.0
 
 func update_background_layout() -> void:
 	if background == null or background.texture == null:
@@ -50,18 +54,27 @@ func update_background_layout() -> void:
 	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
 		return
 
-	var viewport_size: Vector2 = get_viewport_rect().size
+	var visible_rect: Rect2 = get_viewport().get_visible_rect()
+	var viewport_pos: Vector2 = visible_rect.position
+	var viewport_size: Vector2 = visible_rect.size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		viewport_size = get_viewport_rect().size
+		viewport_pos = Vector2.ZERO
+
+	if background_fill:
+		background_fill.anchor_left = 0.0
+		background_fill.anchor_top = 0.0
+		background_fill.anchor_right = 0.0
+		background_fill.anchor_bottom = 0.0
+		background_fill.position = viewport_pos.round()
+		background_fill.size = viewport_size.round()
+
 	var scale_by_height: float = viewport_size.y / tex_size.y
 	var draw_size: Vector2 = tex_size * scale_by_height
-
-	background.anchor_left = 0.0
-	background.anchor_top = 0.0
-	background.anchor_right = 0.0
-	background.anchor_bottom = 0.0
-	background.offset_left = (viewport_size.x - draw_size.x) * 0.5
-	background.offset_top = 0.0
-	background.offset_right = background.offset_left + draw_size.x
-	background.offset_bottom = draw_size.y
+	var offset_x: float = (viewport_size.x - draw_size.x) * 0.5
+	var offset_y: float = (viewport_size.y - draw_size.y) * 0.5
+	background.position = (viewport_pos + Vector2(offset_x, offset_y)).round()
+	background.size = draw_size.round()
 
 func _input(event: InputEvent) -> void:
 	if is_starting:
