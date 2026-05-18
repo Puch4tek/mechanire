@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://de01r1odw73tl"
-path="res://.godot/imported/playerHeadTransistion.PNG-1df287b2bc5707ab636f6d9af275983c.ctex"
+uid="uid://cd86sxegamnwj"
+path="res://.godot/imported/playerHeadTransition.PNG-99963457b6d14bc2450cf8cf79b0f070.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/golona/playerHeadTransistion.PNG"
-dest_files=["res://.godot/imported/playerHeadTransistion.PNG-1df287b2bc5707ab636f6d9af275983c.ctex"]
+source_file="res://assets/golona/playerHeadTransition.PNG"
+dest_files=["res://.godot/imported/playerHeadTransition.PNG-99963457b6d14bc2450cf8cf79b0f070.ctex"]
 
 [params]
 

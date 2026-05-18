@@ -111,7 +111,7 @@ func apply_player_texture_defaults() -> void:
 		player_tail_texture = load_texture_from_folder(player_texture_folder, "playerLegs.png")
 	if player_head_transition_texture == null:
 		# Nazwa pliku w assets ma literowke: Transistion.
-		player_head_transition_texture = load_texture_from_folder(player_texture_folder, "playerHeadTransistion.PNG")
+		player_head_transition_texture = load_texture_from_folder(player_texture_folder, "playerHeadTransition.PNG")
 	if player_tail_transition_texture == null:
 		player_tail_transition_texture = load_texture_from_folder(player_texture_folder, "playerLegTransition.PNG")
 	if player_corner_texture == null:
