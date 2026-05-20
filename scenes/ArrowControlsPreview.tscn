@@ -1,0 +1,134 @@
+[gd_scene format=3]
+
+[node name="ArrowControlsPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.854902, 0.847059, 0.796078, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -240.0
+offset_top = 28.0
+offset_right = 240.0
+offset_bottom = 74.0
+theme_override_font_sizes/font_size = 34
+text = "Arrow Controls - Preview"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -320.0
+offset_top = 76.0
+offset_right = 320.0
+offset_bottom = 108.0
+theme_override_font_sizes/font_size = 20
+text = "Static mockup only - no gameplay input wired here"
+horizontal_alignment = 1
+
+[node name="DPadPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 36.0
+offset_top = -330.0
+offset_right = 348.0
+offset_bottom = -18.0
+
+[node name="Up" type="Button" parent="DPadPanel"]
+layout_mode = 0
+offset_left = 112.0
+offset_top = 14.0
+offset_right = 200.0
+offset_bottom = 102.0
+disabled = true
+text = "^"
+theme_override_font_sizes/font_size = 34
+
+[node name="Left" type="Button" parent="DPadPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 112.0
+offset_right = 102.0
+offset_bottom = 200.0
+disabled = true
+text = "<"
+theme_override_font_sizes/font_size = 34
+
+[node name="Center" type="Panel" parent="DPadPanel"]
+layout_mode = 0
+offset_left = 112.0
+offset_top = 112.0
+offset_right = 200.0
+offset_bottom = 200.0
+
+[node name="Right" type="Button" parent="DPadPanel"]
+layout_mode = 0
+offset_left = 210.0
+offset_top = 112.0
+offset_right = 298.0
+offset_bottom = 200.0
+disabled = true
+text = ">"
+theme_override_font_sizes/font_size = 34
+
+[node name="Down" type="Button" parent="DPadPanel"]
+layout_mode = 0
+offset_left = 112.0
+offset_top = 210.0
+offset_right = 200.0
+offset_bottom = 298.0
+disabled = true
+text = "v"
+theme_override_font_sizes/font_size = 34
+
+[node name="ActionPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -220.0
+offset_right = -36.0
+offset_bottom = -18.0
+
+[node name="Pause" type="Button" parent="ActionPanel"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 206.0
+offset_bottom = 92.0
+disabled = true
+text = "PAUSE"
+theme_override_font_sizes/font_size = 24
+
+[node name="Reset" type="Button" parent="ActionPanel"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 106.0
+offset_right = 206.0
+offset_bottom = 180.0
+disabled = true
+text = "RESET"
+theme_override_font_sizes/font_size = 24
+

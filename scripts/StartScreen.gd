@@ -4,7 +4,7 @@ extends Control
 @onready var background: TextureRect = $Background
 @onready var background_fill: ColorRect = get_node_or_null("BackgroundFill")
 
-@export var side_fill_color: Color = Color(0.85490197, 0.84705883, 0.79607844, 1.0)
+@export var side_fill_color: Color = Color(0.95686275, 0.92941176, 0.86666667, 1.0)
 
 var is_starting: bool = false
 
@@ -54,11 +54,11 @@ func update_background_layout() -> void:
 	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
 		return
 
-	var visible_rect: Rect2 = get_viewport().get_visible_rect()
-	var viewport_pos: Vector2 = visible_rect.position
-	var viewport_size: Vector2 = visible_rect.size
+	var viewport_rect: Rect2 = get_viewport_rect()
+	var viewport_pos: Vector2 = viewport_rect.position
+	var viewport_size: Vector2 = viewport_rect.size
 	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
-		viewport_size = get_viewport_rect().size
+		viewport_size = get_viewport().get_visible_rect().size
 		viewport_pos = Vector2.ZERO
 
 	if background_fill:

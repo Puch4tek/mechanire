@@ -20,7 +20,7 @@ cells_2d = Array[PackedInt32Array]([
 	PackedInt32Array(10, 9, 0, 2, 12, 2, 15, 8, 3, 8, 0, 3, 10),
 	PackedInt32Array(8, 6, 10, 8, 5, 0, 5, 2, 12, 2, 10, 12, 2),
 	PackedInt32Array(12, 1, 6, 10, 15, 10, 11, 10, 15, 10, 12, 1, 6),
-	PackedInt32Array(11, 8, 5, 0, 5, 2, 10, 8, 5, 0, 5, 2, 11),
+	PackedInt32Array(10, 8, 5, 0, 5, 2, 10, 8, 5, 0, 5, 2, 10),
 	PackedInt32Array(10, 12, 5, 2, 9, 2, 14, 8, 3, 8, 5, 6, 10),
 	PackedInt32Array(14, 13, 7, 12, 6, 12, 5, 6, 12, 6, 13, 5, 6),
 ])

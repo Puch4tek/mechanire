@@ -16,6 +16,9 @@
 [ext_resource type="Texture2D" uid="uid://bswbogv0orux6" path="res://assets/sobczi/enemyLegTransition.png" id="15_enemy_corner"]
 [ext_resource type="Texture2D" uid="uid://x1c18boghgcw" path="res://assets/sobczi/enemyHeadTransition.png" id="16_enemy_head_transition"]
 [ext_resource type="Texture2D" uid="uid://dtvobvu0esm56" path="res://assets/sobczi/enemyChestTransition.png" id="17_enemy_chest_transition"]
+[ext_resource type="Script" uid="uid://p5lgmk3yi5tc" path="res://scripts/BoardAreaHelper.gd" id="18_board_helper"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_arrow_panel"]
 
 [node name="Game" type="Node2D" unique_id=757534878]
 script = ExtResource("1_s0nni")
@@ -34,6 +37,11 @@ segment_scene = ExtResource("11_2rd6h")
 z_index = 10
 position = Vector2(-1, -1)
 tile_set = ExtResource("2_qy1jj")
+
+[node name="BoardAreaHelper" type="Node2D" parent="." unique_id=1694204389]
+z_index = 200
+position = Vector2(404, 10)
+script = ExtResource("18_board_helper")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=2077377790]
 
@@ -85,7 +93,7 @@ offset_bottom = 44.0
 theme_override_font_sizes/font_size = 24
 text = "Score: 0"
 
-[node name="LevelLabel" type="Label" parent="CanvasLayer/Control"]
+[node name="LevelLabel" type="Label" parent="CanvasLayer/Control" unique_id=1922358565]
 layout_mode = 1
 offset_left = 58.0
 offset_top = 42.0
@@ -93,6 +101,56 @@ offset_right = 300.0
 offset_bottom = 76.0
 theme_override_font_sizes/font_size = 22
 text = "Poziom: 1/10"
+
+[node name="ArrowPanel" type="Panel" parent="CanvasLayer/Control" unique_id=1110512308]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -292.0
+offset_top = -286.0
+offset_right = -20.0
+offset_bottom = -14.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_arrow_panel")
+
+[node name="ArrowUp" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=1593189386]
+layout_mode = 0
+offset_left = 95.0
+offset_top = 12.0
+offset_right = 177.0
+offset_bottom = 94.0
+theme_override_font_sizes/font_size = 34
+text = "^"
+
+[node name="ArrowLeft" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=1011955067]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 95.0
+offset_right = 94.0
+offset_bottom = 177.0
+theme_override_font_sizes/font_size = 34
+text = "<"
+
+[node name="ArrowRight" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=115387729]
+layout_mode = 0
+offset_left = 178.0
+offset_top = 95.0
+offset_right = 260.0
+offset_bottom = 177.0
+theme_override_font_sizes/font_size = 34
+text = ">"
+
+[node name="ArrowDown" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=1303100613]
+layout_mode = 0
+offset_left = 95.0
+offset_top = 178.0
+offset_right = 177.0
+offset_bottom = 260.0
+theme_override_font_sizes/font_size = 34
+text = "v"
 
 [node name="Pause" parent="CanvasLayer" unique_id=1084391853 instance=ExtResource("3_kiw3p")]
 process_mode = 3
@@ -102,7 +160,7 @@ visible = false
 process_mode = 3
 visible = false
 
-[node name="LevelComplete" type="Control" parent="CanvasLayer"]
+[node name="LevelComplete" type="Control" parent="CanvasLayer" unique_id=455869555]
 visible = false
 layout_mode = 3
 anchors_preset = 15
@@ -111,7 +169,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ColorRect" type="ColorRect" parent="CanvasLayer/LevelComplete"]
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer/LevelComplete" unique_id=2059477096]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -120,7 +178,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.45)
 
-[node name="Panel" type="Panel" parent="CanvasLayer/LevelComplete"]
+[node name="Panel" type="Panel" parent="CanvasLayer/LevelComplete" unique_id=203260983]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -134,7 +192,7 @@ offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/LevelComplete/Panel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/LevelComplete/Panel" unique_id=1996209143]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -147,15 +205,14 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 20
 
-[node name="TitleLabel" type="Label" parent="CanvasLayer/LevelComplete/Panel/VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="CanvasLayer/LevelComplete/Panel/VBoxContainer" unique_id=1870741463]
 layout_mode = 2
-size_flags_vertical = 4
 theme_override_font_sizes/font_size = 44
 text = "Poziom zaliczony"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="NextLevelButton" type="Button" parent="CanvasLayer/LevelComplete/Panel/VBoxContainer"]
+[node name="NextLevelButton" type="Button" parent="CanvasLayer/LevelComplete/Panel/VBoxContainer" unique_id=294431413]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -188,3 +245,7 @@ color = Color(0.78431374, 0.75686276, 0.6509804, 1)
 
 [connection signal="pressed" from="CanvasLayer/Control/ResetButton" to="." method="_on_reset_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/Control/PauseButton" to="." method="_on_pause_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/ArrowPanel/ArrowUp" to="." method="_on_arrow_up_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/ArrowPanel/ArrowLeft" to="." method="_on_arrow_left_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/ArrowPanel/ArrowRight" to="." method="_on_arrow_right_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/ArrowPanel/ArrowDown" to="." method="_on_arrow_down_pressed"]

@@ -485,6 +485,10 @@ func try_advance_snake(moving_snake: Node2D) -> bool:
 	if try_consume_enemy_head_from_behind(moving_snake, next_head_cell, effective_dir):
 		moving_snake.advance(grid_controller)
 		return true
+	# Enemy moze zjesc glowe gracza od tylu.
+	if try_consume_player_head_from_behind(moving_snake, next_head_cell, effective_dir):
+		moving_snake.advance(grid_controller)
+		return true
 
 	# Rear-end ma pierwszeństwo nad zwykłą kolizją.
 	var rear_target: Node2D = find_rear_end_target_grid(moving_snake, next_head_cell, effective_dir)
@@ -527,6 +531,26 @@ func try_consume_enemy_head_from_behind(moving_snake: Node2D, next_head_cell: Ve
 		return true
 
 	return false
+
+func try_consume_player_head_from_behind(moving_snake: Node2D, next_head_cell: Vector2i, moving_direction: Vector2i) -> bool:
+	if moving_snake == snake:
+		return false
+	if snake.head_cell != next_head_cell:
+		return false
+
+	var player_forward: Vector2i = snake.get_effective_direction(grid_controller)
+	if player_forward == Vector2i.ZERO:
+		player_forward = snake.direction
+
+	var expected_from_cell: Vector2i = snake.head_cell - player_forward
+	if moving_snake.head_cell != expected_from_cell:
+		return false
+	if moving_direction != player_forward:
+		return false
+
+	eliminate_snake(snake)
+	moving_snake.grow()
+	return true
 
 func check_head_collision(moving_snake: Node2D, head_cell: Vector2i) -> bool:
 	# W tej wersji gracz może przejechać po własnym ciele (jak w poprzednim zachowaniu projektu).
@@ -588,6 +612,9 @@ func find_rear_end_target_grid(
 ) -> Node2D:
 	if moving_snake != snake and is_rear_end_contact_grid(moving_snake, snake, next_head_cell, moving_direction):
 		return snake
+	if moving_snake != snake:
+		# Enemy can only consume the player, never other enemies.
+		return null
 
 	for enemy in enemy_snakes:
 		if not is_instance_valid(enemy):
@@ -620,12 +647,40 @@ func eliminate_snake(target: Node2D) -> void:
 	if is_instance_valid(target):
 		target.queue_free()
 
-func get_free_cells() -> Array[Vector2i]:
+func get_player_reachable_cells() -> Dictionary:
+	var reachable: Dictionary = {}
+	if grid_controller == null or grid_controller.level == null:
+		return reachable
+	if not grid_controller.is_inside_grid(snake.head_cell):
+		return reachable
+
+	var queue: Array[Vector2i] = [snake.head_cell]
+	var read_index: int = 0
+	reachable[snake.head_cell] = true
+	var dirs: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]
+
+	while read_index < queue.size():
+		var current: Vector2i = queue[read_index]
+		read_index += 1
+		for dir in dirs:
+			if not grid_controller.can_move(current, dir):
+				continue
+			var next_cell: Vector2i = current + dir
+			if reachable.has(next_cell):
+				continue
+			reachable[next_cell] = true
+			queue.append(next_cell)
+
+	return reachable
+
+func get_free_cells(reachable_cells: Dictionary = {}) -> Array[Vector2i]:
 	var free: Array[Vector2i] = []
 	var level = grid_controller.level
 	for y in range(level.height):
 		for x in range(level.width):
 			var cell := Vector2i(x, y)
+			if not reachable_cells.is_empty() and not reachable_cells.has(cell):
+				continue
 			if snake.contains_cell(cell):
 				continue
 
@@ -648,7 +703,8 @@ func get_free_cells() -> Array[Vector2i]:
 func spawn_extension() -> void:
 	if extension_scene == null:
 		return
-	var free_cells := get_free_cells()
+	var reachable_cells: Dictionary = get_player_reachable_cells()
+	var free_cells := get_free_cells(reachable_cells)
 	if free_cells.is_empty():
 		return
 	var cell: Vector2i = free_cells[randi() % free_cells.size()]
