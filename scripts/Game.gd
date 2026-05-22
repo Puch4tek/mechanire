@@ -23,20 +23,6 @@ extends Node2D
 @onready var arrow_right: Button = $CanvasLayer/Control/ArrowPanel/ArrowRight
 @onready var arrow_down: Button = $CanvasLayer/Control/ArrowPanel/ArrowDown
 
-func toggle_pause():
-	if get_tree().paused:
-		resume_game()
-	else:
-		pause_game()
-
-func pause_game():
-	get_tree().paused = true
-	$CanvasLayer/Pause.visible = true
-	
-func resume_game():
-	get_tree().paused = false
-	$CanvasLayer/Pause.visible = false
-
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	get_viewport().size_changed.connect(Callable(self, "_layout_hud"))
@@ -44,17 +30,18 @@ func _ready() -> void:
 	call_deferred("_apply_dpad_icons")
 	call_deferred("_layout_hud")
 
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
-
 func _on_reset_button_pressed() -> void:
+	var controller := get_node_or_null("GameController")
+	if controller != null and controller.has_method("reset_current_level"):
+		controller.reset_current_level()
+		return
+	# Fallback only if controller method is unavailable.
 	get_tree().reload_current_scene()
 
 
 func _on_pause_button_pressed() -> void:
-	pause_game()
+	get_tree().paused = true
+	$CanvasLayer/Pause.visible = true
 
 func _layout_hud() -> void:
 	if maze == null:

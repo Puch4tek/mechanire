@@ -109,43 +109,5 @@ func get_maze_offset() -> Vector2:
 func get_snake_spawn() -> Vector2i:
 	return level.snake_spawn
 
-func get_enemy_spawn_data(body_length: int = 3) -> Array[Dictionary]:
-	var spawn_data: Array[Dictionary] = []
-	for i in range(level.enemy_spawns.size()):
-		var spawn: Vector2i = level.enemy_spawns[i]
-		if not is_inside_grid(spawn):
-			continue
-
-		var initial_direction: Vector2i = Vector2i.RIGHT
-		if i < level.enemy_spawn_directions.size() and level.enemy_spawn_directions[i] != Vector2i.ZERO:
-			initial_direction = level.enemy_spawn_directions[i]
-
-		spawn_data.append({
-			"spawn": spawn,
-			"initial_direction": initial_direction,
-		})
-
-	return spawn_data
-
-func get_enemy_spawns(body_length: int = 3) -> Array[Vector2i]:
-	var valid_spawns: Array[Vector2i] = []
-	for data in get_enemy_spawn_data(body_length):
-		valid_spawns.append(data["spawn"])
-	return valid_spawns
-
-func get_enemy_body_cells(spawn: Vector2i, body_length: int, initial_direction: Vector2i) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	var safe_direction: Vector2i = initial_direction
-	if safe_direction == Vector2i.ZERO:
-		safe_direction = Vector2i.RIGHT
-
-	for i in range(max(1, body_length)):
-		cells.append(spawn - safe_direction * i)
-
-	return cells
-
 func is_inside_grid(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < level.width and cell.y >= 0 and cell.y < level.height
-
-func _process(delta: float) -> void:
-	pass

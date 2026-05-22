@@ -39,10 +39,22 @@ extends Node
 	"res://resources/level9.tres",
 	"res://resources/level10.tres",
 ]
-@export var level_clear_delay: float = 0.7
 @export var enemy_attack_score: float = 1000.0
 @export var enemy_chase_weight: float = 6.0
 @export var enemy_space_weight: float = 2.5
+@export var enemy_random_weight: float = 0.55
+
+const CARDINAL_DIRS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]
+const ENEMY_RING_OFFSETS: Array[Vector2i] = [
+	Vector2i.RIGHT,
+	Vector2i.LEFT,
+	Vector2i.UP,
+	Vector2i.DOWN,
+	Vector2i(2, 0),
+	Vector2i(-2, 0),
+	Vector2i(0, 2),
+	Vector2i(0, -2),
+]
 
 @onready var grid_controller: Node = get_node("../GridController")
 @onready var snake: Node2D = get_node("../Snake")
@@ -65,12 +77,12 @@ var current_level_index: int = 0
 var level_started_with_enemies: bool = false
 var pending_enemy_spawn_data: Array[Dictionary] = []
 var enemy_release_timer: float = 0.0
+var enemy_moved_this_frame: Dictionary = {}
 var pickup_sfx_player: AudioStreamPlayer
 var eat_segment_sfx_player: AudioStreamPlayer
 
 enum GameState {
 	RUNNING,
-	PAUSED,
 	GAME_OVER,
 	LEVEL_CLEAR,
 }
@@ -275,6 +287,14 @@ func go_to_next_level() -> void:
 	if not load_level_by_index(next_level):
 		trigger_game_over()
 
+func reset_current_level() -> void:
+	if current_level_index < 0 or current_level_index >= level_paths.size():
+		if not load_level_by_index(0):
+			trigger_game_over()
+		return
+	if not load_level_by_index(current_level_index):
+		trigger_game_over()
+
 func run_player_frame(delta: float) -> void:
 	snake.set_direction(queued_direction)
 	var steps: int = snake.consume_step_budget(delta)
@@ -285,10 +305,13 @@ func run_player_frame(delta: float) -> void:
 		check_extension_pickup()
 
 func run_enemy_frame(delta: float) -> void:
+	enemy_moved_this_frame.clear()
 	for idx in range(enemy_snakes.size() - 1, -1, -1):
 		var enemy: Node2D = enemy_snakes[idx]
 		if not is_instance_valid(enemy):
 			enemy_snakes.remove_at(idx)
+			continue
+		if enemy_moved_this_frame.has(enemy):
 			continue
 
 		if not is_enemy_runtime_valid(enemy):
@@ -307,10 +330,18 @@ func run_enemy_frame(delta: float) -> void:
 			enemy_snakes.remove_at(idx)
 
 func update_enemy_directions() -> void:
-	for enemy in enemy_snakes:
+	var reservation: Dictionary = {}
+	var update_order: Array[Node2D] = enemy_snakes.duplicate()
+	update_order.shuffle()
+	for enemy in update_order:
 		if not is_instance_valid(enemy):
 			continue
-		enemy.set_direction(choose_enemy_direction(enemy))
+		var enemy_index: int = enemy_snakes.find(enemy)
+		var chosen_dir: Vector2i = choose_enemy_direction(enemy, reservation, enemy_index)
+		enemy.set_direction(chosen_dir)
+		var reserved_head: Vector2i = enemy.head_cell + chosen_dir
+		if grid_controller.can_move(enemy.head_cell, chosen_dir):
+			reservation[reserved_head] = true
 
 func spawn_enemy_snakes() -> void:
 	pending_enemy_spawn_data.clear()
@@ -419,51 +450,88 @@ func is_enemy_runtime_valid(enemy: Node2D) -> bool:
 
 	return true
 
-func choose_enemy_direction(enemy: Node2D) -> Vector2i:
+func choose_enemy_direction(enemy: Node2D, reserved_heads: Dictionary = {}, enemy_index: int = -1) -> Vector2i:
 	var current: Vector2i = enemy.direction
 	var candidates: Array[Vector2i] = [current, turn_left(current), turn_right(current), -current]
 	var best_direction: Vector2i = current
 	var best_score: float = -INF
+	if enemy_index < 0:
+		enemy_index = enemy_snakes.find(enemy)
 
 	for dir in candidates:
 		if not grid_controller.can_move(enemy.head_cell, dir):
 			continue
+		var next_head: Vector2i = enemy.head_cell + dir
+		if reserved_heads.has(next_head):
+			continue
 		if snake_would_collide(enemy, dir):
 			continue
 
-		var score: float = score_enemy_direction(enemy, dir)
-		if score > best_score:
-			best_score = score
+		var direction_score: float = score_enemy_direction(enemy, dir, enemy_index)
+		if direction_score > best_score:
+			best_score = direction_score
 			best_direction = dir
 
 	return best_direction
 
-func score_enemy_direction(enemy: Node2D, dir: Vector2i) -> float:
+func score_enemy_direction(enemy: Node2D, dir: Vector2i, enemy_index: int) -> float:
 	var next_head: Vector2i = enemy.head_cell + dir
-	var score: float = randf() * 0.05
+	var direction_score: float = randf_range(-enemy_random_weight, enemy_random_weight)
+	var target_cell: Vector2i = get_enemy_target_cell(enemy_index)
 
 	if snake.contains_cell(next_head):
-		score += enemy_attack_score
+		direction_score += enemy_attack_score
 
 	var dist_now: int = manhattan(enemy.head_cell, snake.head_cell)
 	var dist_next: int = manhattan(next_head, snake.head_cell)
-	score += float(dist_now - dist_next) * enemy_chase_weight
+	direction_score += float(dist_now - dist_next) * enemy_chase_weight * 0.6
+
+	var target_dist_now: int = manhattan(enemy.head_cell, target_cell)
+	var target_dist_next: int = manhattan(next_head, target_cell)
+	direction_score += float(target_dist_now - target_dist_next) * enemy_chase_weight * 0.7
 
 	var open_paths: int = count_open_paths(next_head)
-	score += float(open_paths) * enemy_space_weight
+	direction_score += float(open_paths) * enemy_space_weight
+	direction_score += enemy_separation_score(enemy, next_head, dir)
 
 	if dir == enemy.direction:
-		score += 0.25
+		direction_score += 0.25
 
-	return score
+	return direction_score
+
+func get_enemy_target_cell(enemy_index: int) -> Vector2i:
+	if ENEMY_RING_OFFSETS.is_empty() or enemy_index < 0:
+		return snake.head_cell
+	var offset: Vector2i = ENEMY_RING_OFFSETS[enemy_index % ENEMY_RING_OFFSETS.size()]
+	var candidate: Vector2i = snake.head_cell + offset
+	if grid_controller.is_inside_grid(candidate):
+		return candidate
+	return snake.head_cell
+
+func enemy_separation_score(enemy: Node2D, next_head: Vector2i, dir: Vector2i) -> float:
+	var separation_score: float = 0.0
+	for other in enemy_snakes:
+		if not is_instance_valid(other) or other == enemy:
+			continue
+
+		var dist: int = manhattan(next_head, other.head_cell)
+		if dist == 0:
+			separation_score -= 100.0
+		elif dist == 1:
+			separation_score -= 0.8
+
+		# Penalize queueing directly behind another enemy in the same direction.
+		if other.direction == dir and next_head == other.head_cell - dir:
+			separation_score -= 1.6
+
+	return separation_score
 
 func manhattan(a: Vector2i, b: Vector2i) -> int:
 	return abs(a.x - b.x) + abs(a.y - b.y)
 
 func count_open_paths(cell: Vector2i) -> int:
-	var dirs: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]
 	var count: int = 0
-	for dir in dirs:
+	for dir in CARDINAL_DIRS:
 		if grid_controller.can_move(cell, dir):
 			count += 1
 	return count
@@ -480,6 +548,10 @@ func try_advance_snake(moving_snake: Node2D) -> bool:
 		return true
 
 	var next_head_cell: Vector2i = moving_snake.head_cell + effective_dir
+	if moving_snake != snake and try_resolve_enemy_head_swap(moving_snake, next_head_cell, effective_dir):
+		return true
+	if moving_snake != snake and enemy_hits_other_enemy(moving_snake, next_head_cell):
+		return false
 
 	# Gracz moze zjesc glowe enemy od tylu (nie ginie przy takim kontakcie).
 	if try_consume_enemy_head_from_behind(moving_snake, next_head_cell, effective_dir):
@@ -633,8 +705,58 @@ func snake_would_collide(enemy: Node2D, dir: Vector2i) -> bool:
 		return true
 	if snake.contains_cell(next_head) and not is_rear_end_contact_grid(enemy, snake, next_head, dir):
 		return true
-	# Friendly fire OFF: enemy AI nie traktuje innych enemy jako zabojczej kolizji.
+	if enemy_hits_other_enemy(enemy, next_head) and not can_enemy_swap_heads(enemy, next_head):
+		return true
 	return false
+
+func enemy_hits_other_enemy(moving_enemy: Node2D, next_head_cell: Vector2i) -> bool:
+	for other_enemy in enemy_snakes:
+		if not is_instance_valid(other_enemy) or other_enemy == moving_enemy:
+			continue
+		if other_enemy.contains_cell(next_head_cell):
+			return true
+	return false
+
+func get_enemy_with_head_at(cell: Vector2i, exclude_enemy: Node2D = null) -> Node2D:
+	for other_enemy in enemy_snakes:
+		if not is_instance_valid(other_enemy) or other_enemy == exclude_enemy:
+			continue
+		if other_enemy.head_cell == cell:
+			return other_enemy
+	return null
+
+func can_enemy_swap_heads(moving_enemy: Node2D, next_head_cell: Vector2i) -> bool:
+	var blocking_enemy: Node2D = get_enemy_with_head_at(next_head_cell, moving_enemy)
+	if blocking_enemy == null:
+		return false
+
+	var blocking_dir: Vector2i = blocking_enemy.get_effective_direction(grid_controller)
+	if blocking_dir == Vector2i.ZERO:
+		blocking_dir = blocking_enemy.direction
+	if blocking_dir == Vector2i.ZERO:
+		return false
+	if not grid_controller.can_move(blocking_enemy.head_cell, blocking_dir):
+		return false
+
+	return blocking_enemy.head_cell + blocking_dir == moving_enemy.head_cell
+
+func try_resolve_enemy_head_swap(moving_enemy: Node2D, next_head_cell: Vector2i, moving_dir: Vector2i) -> bool:
+	var blocking_enemy: Node2D = get_enemy_with_head_at(next_head_cell, moving_enemy)
+	if blocking_enemy == null:
+		return false
+	if not can_enemy_swap_heads(moving_enemy, next_head_cell):
+		return false
+	if not grid_controller.can_move(moving_enemy.head_cell, moving_dir):
+		return false
+
+	if not blocking_enemy.advance(grid_controller):
+		return false
+	enemy_moved_this_frame[blocking_enemy] = true
+
+	if not moving_enemy.advance(grid_controller):
+		return false
+	enemy_moved_this_frame[moving_enemy] = true
+	return true
 
 func eliminate_snake(target: Node2D) -> void:
 	if target == snake:

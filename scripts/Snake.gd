@@ -13,6 +13,7 @@ extends Node2D
 
 var segments: Array[Node2D] = []
 var segment_cells: Array[Vector2i] = []
+var previous_segment_cells: Array[Vector2i] = []
 var direction: Vector2i = Vector2i.RIGHT
 var requested_direction: Vector2i = Vector2i.RIGHT
 var head_cell: Vector2i
@@ -25,13 +26,6 @@ func grid_to_world(cell: Vector2i) -> Vector2:
 		cell.y * tile_size + tile_size / 2.0
 	)
 
-func world_to_cell(world_pos: Vector2) -> Vector2i:
-	var local: Vector2 = world_pos - maze_offset
-	return Vector2i(
-		int(floor(local.x / float(tile_size))),
-		int(floor(local.y / float(tile_size)))
-	)
-
 func _configure_segment(seg: Node2D) -> void:
 	if seg.has_method("set_tile_size"):
 		seg.set_tile_size(float(tile_size))
@@ -41,6 +35,7 @@ func spawn_snake(start: Vector2i, length: int = 3, initial_direction: Vector2i =
 		seg.queue_free()
 	segments.clear()
 	segment_cells.clear()
+	previous_segment_cells.clear()
 
 	if initial_direction == Vector2i.ZERO:
 		initial_direction = Vector2i.RIGHT
@@ -59,6 +54,7 @@ func spawn_snake(start: Vector2i, length: int = 3, initial_direction: Vector2i =
 
 		segments.append(seg)
 		segment_cells.append(cell)
+	previous_segment_cells = segment_cells.duplicate()
 
 	update_positions()
 
@@ -74,6 +70,7 @@ func grow() -> void:
 
 	segments.append(seg)
 	segment_cells.append(tail_cell)
+	previous_segment_cells = segment_cells.duplicate()
 	update_positions()
 
 func shrink_tail(count: int = 1, min_length: int = 1) -> int:
@@ -92,6 +89,7 @@ func shrink_tail(count: int = 1, min_length: int = 1) -> int:
 		removed += 1
 
 	if removed > 0:
+		previous_segment_cells = segment_cells.duplicate()
 		update_positions()
 	return removed
 
@@ -139,6 +137,8 @@ func advance(grid_controller, ignore_walls: bool = false) -> bool:
 	if not ignore_walls and not grid_controller.can_move(head_cell, direction):
 		return false
 
+	previous_segment_cells = segment_cells.duplicate()
+
 	var next_head: Vector2i = head_cell + direction
 
 	for i in range(segment_cells.size() - 1, 0, -1):
@@ -157,10 +157,6 @@ func can_apply_requested_direction(grid_controller, ignore_walls: bool = false) 
 		return grid_controller.is_inside_grid(head_cell + requested_direction)
 
 	return grid_controller.can_move(head_cell, requested_direction)
-
-func get_predicted_head_world(delta: float, for_dir: Vector2i = direction) -> Vector2:
-	var next_cell: Vector2i = head_cell + for_dir
-	return grid_to_world(next_cell)
 
 func _dir_to_rotation(dir: Vector2i) -> float:
 	# Wszystkie tekstury bazowe traktujemy jako "do gory" (UP).
@@ -231,6 +227,13 @@ func update_positions() -> void:
 	for i in range(segments.size()):
 		var segment: Node2D = segments[i]
 		segment.position = grid_to_world(segment_cells[i])
+		# Segments already moving in the new direction render above lagging segments.
+		var base_z: int = segments.size() - i
+		var is_active_reverse_wave: bool = false
+		if previous_segment_cells.size() == segment_cells.size() and i < previous_segment_cells.size():
+			var move_delta: Vector2i = segment_cells[i] - previous_segment_cells[i]
+			is_active_reverse_wave = move_delta != Vector2i.ZERO and move_delta == direction
+		segment.z_index = base_z + (1000 if is_active_reverse_wave else 0)
 
 		var texture_to_use: Texture2D = body_texture
 		var rotation_angle: float = 0.0
@@ -271,14 +274,14 @@ func update_positions() -> void:
 			else:
 				if bridge_texture:
 					texture_to_use = bridge_texture
-					var transform: Dictionary
+					var corner_transform: Dictionary
 					if is_head_bridge:
-						transform = _head_transition_corner_transform(dir_to_prev, dir_to_next)
+						corner_transform = _head_transition_corner_transform(dir_to_prev, dir_to_next)
 					else:
-						transform = _transition_corner_transform(dir_to_prev, dir_to_next)
-					rotation_angle = transform.get("rotation", 0.0)
-					flip_h = transform.get("flip_h", false)
-					flip_v = transform.get("flip_v", false)
+						corner_transform = _transition_corner_transform(dir_to_prev, dir_to_next)
+					rotation_angle = corner_transform.get("rotation", 0.0)
+					flip_h = corner_transform.get("flip_h", false)
+					flip_v = corner_transform.get("flip_v", false)
 				else:
 					texture_to_use = corner_texture if corner_texture else body_texture
 					rotation_angle = _corner_rotation(dir_to_prev, dir_to_next)
