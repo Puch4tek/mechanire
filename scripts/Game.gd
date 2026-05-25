@@ -6,10 +6,6 @@ extends Node2D
 @export var top_button_size: Vector2 = Vector2(88.0, 88.0)
 @export var score_size: Vector2 = Vector2(240.0, 34.0)
 @export var level_size: Vector2 = Vector2(260.0, 34.0)
-@export var dpad_up_icon: Texture2D
-@export var dpad_left_icon: Texture2D
-@export var dpad_right_icon: Texture2D
-@export var dpad_down_icon: Texture2D
 
 @onready var maze: TileMapLayer = $Maze
 @onready var grid_controller: Node = $GridController
@@ -18,16 +14,14 @@ extends Node2D
 @onready var pause_button: Button = $CanvasLayer/Control/PauseButton
 @onready var reset_button: Button = $CanvasLayer/Control/ResetButton
 @onready var arrow_panel: Control = $CanvasLayer/Control/ArrowPanel
-@onready var arrow_up: Button = $CanvasLayer/Control/ArrowPanel/ArrowUp
-@onready var arrow_left: Button = $CanvasLayer/Control/ArrowPanel/ArrowLeft
-@onready var arrow_right: Button = $CanvasLayer/Control/ArrowPanel/ArrowRight
-@onready var arrow_down: Button = $CanvasLayer/Control/ArrowPanel/ArrowDown
+@onready var arrow_up: Control = $CanvasLayer/Control/ArrowPanel/ArrowUp
+@onready var arrow_left: Control = $CanvasLayer/Control/ArrowPanel/ArrowLeft
+@onready var arrow_right: Control = $CanvasLayer/Control/ArrowPanel/ArrowRight
+@onready var arrow_down: Control = $CanvasLayer/Control/ArrowPanel/ArrowDown
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	get_viewport().size_changed.connect(Callable(self, "_layout_hud"))
-	call_deferred("_apply_touch_button_styles")
-	call_deferred("_apply_dpad_icons")
 	call_deferred("_layout_hud")
 
 func _on_reset_button_pressed() -> void:
@@ -161,12 +155,6 @@ func _set_control_rect(ctrl: Control, pos: Vector2, size: Vector2) -> void:
 	ctrl.offset_right = pos.x + size.x
 	ctrl.offset_bottom = pos.y + size.y
 
-func _apply_dpad_icons() -> void:
-	_apply_dpad_button_icon(arrow_up, dpad_up_icon, "^")
-	_apply_dpad_button_icon(arrow_left, dpad_left_icon, "<")
-	_apply_dpad_button_icon(arrow_right, dpad_right_icon, ">")
-	_apply_dpad_button_icon(arrow_down, dpad_down_icon, "v")
-
 func _layout_dpad_buttons(scale_factor: float) -> void:
 	var sx: float = maxf(0.5, scale_factor)
 	var sy: float = sx
@@ -175,60 +163,6 @@ func _layout_dpad_buttons(scale_factor: float) -> void:
 	_set_control_rect(arrow_right, Vector2(178.0 * sx, 95.0 * sy), Vector2(82.0 * sx, 82.0 * sy))
 	_set_control_rect(arrow_down, Vector2(95.0 * sx, 178.0 * sy), Vector2(82.0 * sx, 82.0 * sy))
 
-func _apply_dpad_button_icon(button: Button, icon: Texture2D, fallback_text: String) -> void:
-	if button == null:
-		return
-	button.flat = false
-	button.expand_icon = true
-	if icon != null:
-		button.icon = icon
-		button.text = ""
-	else:
-		button.icon = null
-		button.text = fallback_text
-
-func _apply_touch_button_styles() -> void:
-	# Each button gets its own visible boundary to improve touch precision.
-	_style_touch_button(arrow_up)
-	_style_touch_button(arrow_left)
-	_style_touch_button(arrow_right)
-	_style_touch_button(arrow_down)
-
-func _style_touch_button(button: Button) -> void:
-	if button == null:
-		return
-	button.flat = false
-	button.focus_mode = Control.FOCUS_NONE
-	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-	var normal_style := StyleBoxFlat.new()
-	normal_style.bg_color = Color(0.12, 0.12, 0.12, 0.45)
-	normal_style.border_width_left = 2
-	normal_style.border_width_top = 2
-	normal_style.border_width_right = 2
-	normal_style.border_width_bottom = 2
-	normal_style.border_color = Color(1.0, 1.0, 1.0, 0.8)
-	normal_style.corner_radius_top_left = 14
-	normal_style.corner_radius_top_right = 14
-	normal_style.corner_radius_bottom_left = 14
-	normal_style.corner_radius_bottom_right = 14
-
-	var pressed_style := StyleBoxFlat.new()
-	pressed_style.bg_color = Color(1.0, 1.0, 1.0, 0.35)
-	pressed_style.border_width_left = 2
-	pressed_style.border_width_top = 2
-	pressed_style.border_width_right = 2
-	pressed_style.border_width_bottom = 2
-	pressed_style.border_color = Color(1.0, 1.0, 1.0, 1.0)
-	pressed_style.corner_radius_top_left = 14
-	pressed_style.corner_radius_top_right = 14
-	pressed_style.corner_radius_bottom_left = 14
-	pressed_style.corner_radius_bottom_right = 14
-
-	button.add_theme_stylebox_override("normal", normal_style)
-	button.add_theme_stylebox_override("hover", normal_style)
-	button.add_theme_stylebox_override("focus", normal_style)
-	button.add_theme_stylebox_override("pressed", pressed_style)
 
 func _queue_arrow_direction(dir: Vector2i) -> void:
 	var controller := get_node_or_null("GameController")

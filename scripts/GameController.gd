@@ -43,6 +43,7 @@ extends Node
 @export var enemy_chase_weight: float = 6.0
 @export var enemy_space_weight: float = 2.5
 @export var enemy_random_weight: float = 0.55
+@export var enemy_objective_commit_time: float = 1.0
 
 const CARDINAL_DIRS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]
 const ENEMY_RING_OFFSETS: Array[Vector2i] = [
@@ -78,6 +79,9 @@ var level_started_with_enemies: bool = false
 var pending_enemy_spawn_data: Array[Dictionary] = []
 var enemy_release_timer: float = 0.0
 var enemy_moved_this_frame: Dictionary = {}
+var enemy_ai_time: float = 0.0
+var enemy_objective_until_by_id: Dictionary = {}
+var enemy_objective_by_id: Dictionary = {}
 var pickup_sfx_player: AudioStreamPlayer
 var eat_segment_sfx_player: AudioStreamPlayer
 
@@ -194,6 +198,9 @@ func load_level_by_index(index: int) -> bool:
 func start_level() -> void:
 	clear_enemy_snakes()
 	clear_extensions()
+	enemy_ai_time = 0.0
+	enemy_objective_until_by_id.clear()
+	enemy_objective_by_id.clear()
 
 	snake.maze_offset = grid_controller.get_maze_offset()
 	snake.tile_size = 64
@@ -235,6 +242,7 @@ func start_level() -> void:
 func _process(delta: float) -> void:
 	if not is_running or state != GameState.RUNNING:
 		return
+	enemy_ai_time += delta
 
 	run_player_frame(delta)
 	if not is_running:
@@ -302,7 +310,7 @@ func run_player_frame(delta: float) -> void:
 		if not try_advance_snake(snake):
 			trigger_game_over()
 			return
-		check_extension_pickup()
+		consume_extension_at_cell(snake.head_cell, snake, true)
 
 func run_enemy_frame(delta: float) -> void:
 	enemy_moved_this_frame.clear()
@@ -325,11 +333,13 @@ func run_enemy_frame(delta: float) -> void:
 				# Blocked/collision step: keep enemy alive, try another direction on next tick.
 				enemy.set_direction(choose_enemy_direction(enemy))
 				break
+			consume_extension_at_cell(enemy.head_cell, enemy, false)
 		if not is_running:
 			enemy.queue_free()
 			enemy_snakes.remove_at(idx)
 
 func update_enemy_directions() -> void:
+	cleanup_enemy_objective_cache()
 	var reservation: Dictionary = {}
 	var update_order: Array[Node2D] = enemy_snakes.duplicate()
 	update_order.shuffle()
@@ -406,6 +416,8 @@ func clear_enemy_snakes() -> void:
 		if is_instance_valid(enemy):
 			enemy.queue_free()
 	enemy_snakes.clear()
+	enemy_objective_until_by_id.clear()
+	enemy_objective_by_id.clear()
 
 func clear_extensions() -> void:
 	for ext in extensions:
@@ -477,18 +489,24 @@ func choose_enemy_direction(enemy: Node2D, reserved_heads: Dictionary = {}, enem
 func score_enemy_direction(enemy: Node2D, dir: Vector2i, enemy_index: int) -> float:
 	var next_head: Vector2i = enemy.head_cell + dir
 	var direction_score: float = randf_range(-enemy_random_weight, enemy_random_weight)
-	var target_cell: Vector2i = get_enemy_target_cell(enemy_index)
+	var objective: Dictionary = get_enemy_objective(enemy, enemy_index)
+	var chasing_player: bool = objective.get("chasing_player", true)
+	var target_cell: Vector2i = objective.get("target_cell", snake.head_cell)
 
-	if snake.contains_cell(next_head):
-		direction_score += enemy_attack_score
+	if chasing_player:
+		if snake.contains_cell(next_head):
+			direction_score += enemy_attack_score
+		var player_dist_now: int = manhattan(enemy.head_cell, snake.head_cell)
+		var player_dist_next: int = manhattan(next_head, snake.head_cell)
+		direction_score += float(player_dist_now - player_dist_next) * enemy_chase_weight * 0.8
+	else:
+		var ext_dist_now: int = manhattan(enemy.head_cell, target_cell)
+		var ext_dist_next: int = manhattan(next_head, target_cell)
+		direction_score += float(ext_dist_now - ext_dist_next) * enemy_chase_weight * 0.9
 
-	var dist_now: int = manhattan(enemy.head_cell, snake.head_cell)
-	var dist_next: int = manhattan(next_head, snake.head_cell)
-	direction_score += float(dist_now - dist_next) * enemy_chase_weight * 0.6
-
-	var target_dist_now: int = manhattan(enemy.head_cell, target_cell)
-	var target_dist_next: int = manhattan(next_head, target_cell)
-	direction_score += float(target_dist_now - target_dist_next) * enemy_chase_weight * 0.7
+		# Jeśli extension jest celem, niech wróg delikatnie unika frontalnego zderzenia z graczem.
+		if snake.contains_cell(next_head):
+			direction_score -= enemy_attack_score * 0.5
 
 	var open_paths: int = count_open_paths(next_head)
 	direction_score += float(open_paths) * enemy_space_weight
@@ -499,7 +517,68 @@ func score_enemy_direction(enemy: Node2D, dir: Vector2i, enemy_index: int) -> fl
 
 	return direction_score
 
-func get_enemy_target_cell(enemy_index: int) -> Vector2i:
+func get_enemy_objective(enemy: Node2D, enemy_index: int) -> Dictionary:
+	var enemy_id: int = get_enemy_id(enemy)
+	if enemy_objective_until_by_id.has(enemy_id) and enemy_objective_by_id.has(enemy_id):
+		var commit_until: float = float(enemy_objective_until_by_id[enemy_id])
+		if enemy_ai_time <= commit_until:
+			var committed: Dictionary = enemy_objective_by_id[enemy_id]
+			if bool(committed.get("chasing_player", true)):
+				return {
+					"chasing_player": true,
+					"target_cell": get_player_target_cell(enemy_index),
+				}
+			var committed_cell: Vector2i = committed.get("target_cell", Vector2i(-1, -1))
+			if is_extension_cell_available(committed_cell):
+				return committed
+
+	var nearest_extension_cell: Vector2i = get_nearest_extension_cell(enemy)
+	var has_extension_target: bool = nearest_extension_cell != Vector2i(-1, -1)
+	if not has_extension_target:
+		var player_objective := {
+			"chasing_player": true,
+			"target_cell": get_player_target_cell(enemy_index),
+		}
+		enemy_objective_by_id[enemy_id] = player_objective
+		enemy_objective_until_by_id[enemy_id] = enemy_ai_time + enemy_objective_commit_time
+		return player_objective
+
+	var extension_dist: int = manhattan(enemy.head_cell, nearest_extension_cell)
+	var player_dist: int = manhattan(enemy.head_cell, snake.head_cell)
+	if extension_dist < player_dist:
+		var extension_objective := {
+			"chasing_player": false,
+			"target_cell": nearest_extension_cell,
+		}
+		enemy_objective_by_id[enemy_id] = extension_objective
+		enemy_objective_until_by_id[enemy_id] = enemy_ai_time + enemy_objective_commit_time
+		return extension_objective
+
+	var fallback_player_objective := {
+		"chasing_player": true,
+		"target_cell": get_player_target_cell(enemy_index),
+	}
+	enemy_objective_by_id[enemy_id] = fallback_player_objective
+	enemy_objective_until_by_id[enemy_id] = enemy_ai_time + enemy_objective_commit_time
+	return fallback_player_objective
+
+func get_nearest_extension_cell(enemy: Node2D) -> Vector2i:
+	var nearest_cell: Vector2i = Vector2i(-1, -1)
+	var best_dist: int = 1 << 30
+	for ext in extensions:
+		if not is_instance_valid(ext):
+			continue
+		var ext_cell_value: Variant = ext.get("cell")
+		if typeof(ext_cell_value) != TYPE_VECTOR2I:
+			continue
+		var ext_cell: Vector2i = ext_cell_value
+		var d: int = manhattan(enemy.head_cell, ext_cell)
+		if d < best_dist:
+			best_dist = d
+			nearest_cell = ext_cell
+	return nearest_cell
+
+func get_player_target_cell(enemy_index: int) -> Vector2i:
 	if ENEMY_RING_OFFSETS.is_empty() or enemy_index < 0:
 		return snake.head_cell
 	var offset: Vector2i = ENEMY_RING_OFFSETS[enemy_index % ENEMY_RING_OFFSETS.size()]
@@ -507,6 +586,35 @@ func get_enemy_target_cell(enemy_index: int) -> Vector2i:
 	if grid_controller.is_inside_grid(candidate):
 		return candidate
 	return snake.head_cell
+
+func is_extension_cell_available(cell: Vector2i) -> bool:
+	if cell == Vector2i(-1, -1):
+		return false
+	for ext in extensions:
+		if not is_instance_valid(ext):
+			continue
+		if ext.cell == cell:
+			return true
+	return false
+
+func get_enemy_id(enemy: Node2D) -> int:
+	if enemy == null:
+		return -1
+	return enemy.get_instance_id()
+
+func cleanup_enemy_objective_cache() -> void:
+	var alive_ids: Dictionary = {}
+	for enemy in enemy_snakes:
+		if not is_instance_valid(enemy):
+			continue
+		alive_ids[get_enemy_id(enemy)] = true
+
+	for key in enemy_objective_by_id.keys():
+		if not alive_ids.has(key):
+			enemy_objective_by_id.erase(key)
+	for key in enemy_objective_until_by_id.keys():
+		if not alive_ids.has(key):
+			enemy_objective_until_by_id.erase(key)
 
 func enemy_separation_score(enemy: Node2D, next_head: Vector2i, dir: Vector2i) -> float:
 	var separation_score: float = 0.0
@@ -559,6 +667,10 @@ func try_advance_snake(moving_snake: Node2D) -> bool:
 		return true
 	# Enemy moze zjesc glowe gracza od tylu.
 	if try_consume_player_head_from_behind(moving_snake, next_head_cell, effective_dir):
+		moving_snake.advance(grid_controller)
+		return true
+	# Dluższy wąż może zjeść krótszego od przodu (gracz <-> enemy).
+	if try_consume_shorter_head_from_front(moving_snake, next_head_cell, effective_dir):
 		moving_snake.advance(grid_controller)
 		return true
 
@@ -622,6 +734,58 @@ func try_consume_player_head_from_behind(moving_snake: Node2D, next_head_cell: V
 
 	eliminate_snake(snake)
 	moving_snake.grow()
+	return true
+
+func try_consume_shorter_head_from_front(moving_snake: Node2D, next_head_cell: Vector2i, moving_direction: Vector2i) -> bool:
+	if moving_snake == null:
+		return false
+
+	if moving_snake == snake:
+		for enemy in enemy_snakes:
+			if not is_instance_valid(enemy):
+				continue
+			if _can_consume_from_front(moving_snake, enemy, next_head_cell, moving_direction):
+				eliminate_snake(enemy)
+				moving_snake.grow()
+				score += 1
+				update_score_label()
+				return true
+		return false
+
+	# Enemy może konsumować od przodu tylko gracza, nigdy innego enemy.
+	if _can_consume_from_front(moving_snake, snake, next_head_cell, moving_direction):
+		eliminate_snake(snake)
+		moving_snake.grow()
+		return true
+
+	return false
+
+func _can_consume_from_front(attacker: Node2D, target: Node2D, next_head_cell: Vector2i, attacker_dir: Vector2i) -> bool:
+	if attacker == null or target == null:
+		return false
+	if attacker == target:
+		return false
+	if target.head_cell != next_head_cell:
+		return false
+
+	# Tylko dłuższy wąż zjada krótszego od przodu.
+	if attacker.segment_cells.size() <= target.segment_cells.size():
+		return false
+
+	var target_forward: Vector2i = target.get_effective_direction(grid_controller)
+	if target_forward == Vector2i.ZERO:
+		target_forward = target.direction
+	if target_forward == Vector2i.ZERO:
+		return false
+
+	# Kontakt od przodu: atakujący nadjeżdża z pola przed głową ofiary
+	# i porusza się przeciwnie do jej kierunku.
+	var front_cell: Vector2i = target.head_cell + target_forward
+	if attacker.head_cell != front_cell:
+		return false
+	if attacker_dir != -target_forward:
+		return false
+
 	return true
 
 func check_head_collision(moving_snake: Node2D, head_cell: Vector2i) -> bool:
@@ -766,6 +930,8 @@ func eliminate_snake(target: Node2D) -> void:
 	var idx: int = enemy_snakes.find(target)
 	if idx != -1:
 		enemy_snakes.remove_at(idx)
+		enemy_objective_by_id.erase(get_enemy_id(target))
+		enemy_objective_until_by_id.erase(get_enemy_id(target))
 	if is_instance_valid(target):
 		target.queue_free()
 
@@ -835,19 +1001,21 @@ func spawn_extension() -> void:
 	ext.setup(cell, randi_range(1, 6), grid_controller.get_maze_offset(), snake.tile_size)
 	extensions.append(ext)
 
-func check_extension_pickup() -> void:
+func consume_extension_at_cell(cell: Vector2i, consumer: Node2D, is_player_consumer: bool) -> void:
 	for i in range(extensions.size() - 1, -1, -1):
 		var ext = extensions[i]
 		if not is_instance_valid(ext):
 			extensions.remove_at(i)
 			continue
-		if ext.cell == snake.head_cell:
-			score += ext.value
-			snake.grow()
+		if ext.cell == cell:
+			if consumer != null and consumer.has_method("grow"):
+				consumer.grow()
+			if is_player_consumer:
+				score += ext.value
+				update_score_label()
 			play_pickup_sfx()
 			ext.queue_free()
 			extensions.remove_at(i)
-			update_score_label()
 			spawn_extension()
 
 func update_score_label() -> void:

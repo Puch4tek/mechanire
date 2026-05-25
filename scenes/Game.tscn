@@ -17,6 +17,14 @@
 [ext_resource type="Texture2D" uid="uid://x1c18boghgcw" path="res://assets/sobczi/enemyHeadTransition.png" id="16_enemy_head_transition"]
 [ext_resource type="Texture2D" uid="uid://dtvobvu0esm56" path="res://assets/sobczi/enemyChestTransition.png" id="17_enemy_chest_transition"]
 [ext_resource type="Script" uid="uid://p5lgmk3yi5tc" path="res://scripts/BoardAreaHelper.gd" id="18_board_helper"]
+[ext_resource type="Texture2D" uid="uid://8j04xjfrmsob" path="res://assets/arrows/depressed/arrow_up.png" id="19_arrow_up_depressed"]
+[ext_resource type="Texture2D" uid="uid://bgvyiecojfvj8" path="res://assets/arrows/pressed/arrow_up.png" id="20_arrow_up_pressed"]
+[ext_resource type="Texture2D" uid="uid://deyk4ib1lsaja" path="res://assets/arrows/depressed/arrow_left.png" id="21_arrow_left_depressed"]
+[ext_resource type="Texture2D" uid="uid://bmbe86or7von4" path="res://assets/arrows/pressed/arrow_left.png" id="22_arrow_left_pressed"]
+[ext_resource type="Texture2D" uid="uid://n8jo3dvdu1a" path="res://assets/arrows/depressed/arrow_right.png" id="23_arrow_right_depressed"]
+[ext_resource type="Texture2D" uid="uid://ckwmb7yalpgvy" path="res://assets/arrows/pressed/arrow_right.png" id="24_arrow_right_pressed"]
+[ext_resource type="Texture2D" uid="uid://qtjecnq1jebi" path="res://assets/arrows/depressed/arrow_down.png" id="25_arrow_down_depressed"]
+[ext_resource type="Texture2D" uid="uid://bfljqgeafoff7" path="res://assets/arrows/pressed/arrow_down.png" id="26_arrow_down_pressed"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_arrow_panel"]
 
@@ -117,41 +125,49 @@ grow_horizontal = 0
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxEmpty_arrow_panel")
 
-[node name="ArrowUp" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=1593189386]
+[node name="ArrowUp" type="TextureButton" parent="CanvasLayer/Control/ArrowPanel" unique_id=1593189386]
 layout_mode = 0
 offset_left = 95.0
 offset_top = 12.0
 offset_right = 177.0
 offset_bottom = 94.0
-theme_override_font_sizes/font_size = 34
-text = "^"
+texture_normal = ExtResource("19_arrow_up_depressed")
+texture_pressed = ExtResource("20_arrow_up_pressed")
+ignore_texture_size = true
+stretch_mode = 5
 
-[node name="ArrowLeft" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=1011955067]
+[node name="ArrowLeft" type="TextureButton" parent="CanvasLayer/Control/ArrowPanel" unique_id=1011955067]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 95.0
 offset_right = 94.0
 offset_bottom = 177.0
-theme_override_font_sizes/font_size = 34
-text = "<"
+texture_normal = ExtResource("21_arrow_left_depressed")
+texture_pressed = ExtResource("22_arrow_left_pressed")
+ignore_texture_size = true
+stretch_mode = 5
 
-[node name="ArrowRight" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=115387729]
+[node name="ArrowRight" type="TextureButton" parent="CanvasLayer/Control/ArrowPanel" unique_id=115387729]
 layout_mode = 0
 offset_left = 178.0
 offset_top = 95.0
 offset_right = 260.0
 offset_bottom = 177.0
-theme_override_font_sizes/font_size = 34
-text = ">"
+texture_normal = ExtResource("23_arrow_right_depressed")
+texture_pressed = ExtResource("24_arrow_right_pressed")
+ignore_texture_size = true
+stretch_mode = 5
 
-[node name="ArrowDown" type="Button" parent="CanvasLayer/Control/ArrowPanel" unique_id=1303100613]
+[node name="ArrowDown" type="TextureButton" parent="CanvasLayer/Control/ArrowPanel" unique_id=1303100613]
 layout_mode = 0
 offset_left = 95.0
 offset_top = 178.0
 offset_right = 177.0
 offset_bottom = 260.0
-theme_override_font_sizes/font_size = 34
-text = "v"
+texture_normal = ExtResource("25_arrow_down_depressed")
+texture_pressed = ExtResource("26_arrow_down_pressed")
+ignore_texture_size = true
+stretch_mode = 5
 
 [node name="Pause" parent="CanvasLayer" unique_id=1084391853 instance=ExtResource("3_kiw3p")]
 process_mode = 3
