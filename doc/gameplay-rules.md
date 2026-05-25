@@ -5,6 +5,10 @@
 - Ruch jest **tile-by-tile**.
 - Prędkość gracza i enemy jest niezależna (`player_speed_px`, `enemy_speed_px`).
 - Kierunek wejściowy trafia do kolejki (`queue_direction`) i jest stosowany, gdy ruch jest legalny.
+- Gracz ma tryb **ciągłego ruchu**: gdy kierunek na wprost jest zablokowany, gra automatycznie wybiera możliwy skręt.
+- Auto-skręt gracza ma krótki **grace period** (`player_auto_turn_delay`), żeby dać czas na ręczny input.
+- Jeśli dostępnych jest kilka legalnych opcji, wybór jest losowy (`pick_random`) dla mniej przewidywalnego flow.
+- Kandydaci przy bloku ściany: tylko lewo/prawo (bez zawracania).
 
 ## Kampania
 
@@ -43,6 +47,7 @@
 - Enemy **nie eliminują** siebie nawzajem klasyczną kolizją.
 - Bezpośrednie stackowanie na tym samym ciele jest blokowane.
 - Dla head-to-head istnieje specjalny mechanizm rozplątania (kontrolowany swap głów).
+- AI enemy ma dodatkowy fallback wyboru kierunku, który preferuje ruch bez blokowania innych enemy.
 
 ## Warunki końca
 

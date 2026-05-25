@@ -44,6 +44,7 @@ extends Node
 @export var enemy_space_weight: float = 2.5
 @export var enemy_random_weight: float = 0.55
 @export var enemy_objective_commit_time: float = 1.0
+@export var player_auto_turn_delay: float = 0.2
 
 const CARDINAL_DIRS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]
 const ENEMY_RING_OFFSETS: Array[Vector2i] = [
@@ -82,6 +83,9 @@ var enemy_moved_this_frame: Dictionary = {}
 var enemy_ai_time: float = 0.0
 var enemy_objective_until_by_id: Dictionary = {}
 var enemy_objective_by_id: Dictionary = {}
+var player_wall_block_time: float = 0.0
+var player_wall_block_dir: Vector2i = Vector2i.ZERO
+var player_wall_block_cell: Vector2i = Vector2i(-1, -1)
 var pickup_sfx_player: AudioStreamPlayer
 var eat_segment_sfx_player: AudioStreamPlayer
 
@@ -201,6 +205,7 @@ func start_level() -> void:
 	enemy_ai_time = 0.0
 	enemy_objective_until_by_id.clear()
 	enemy_objective_by_id.clear()
+	reset_player_wall_block_state()
 
 	snake.maze_offset = grid_controller.get_maze_offset()
 	snake.tile_size = 64
@@ -304,6 +309,7 @@ func reset_current_level() -> void:
 		trigger_game_over()
 
 func run_player_frame(delta: float) -> void:
+	ensure_player_continuous_direction(delta)
 	snake.set_direction(queued_direction)
 	var steps: int = snake.consume_step_budget(delta)
 	for _i in range(steps):
@@ -311,6 +317,50 @@ func run_player_frame(delta: float) -> void:
 			trigger_game_over()
 			return
 		consume_extension_at_cell(snake.head_cell, snake, true)
+
+func ensure_player_continuous_direction(delta: float) -> void:
+	var effective_dir: Vector2i = snake.get_effective_direction(grid_controller)
+	if effective_dir == Vector2i.ZERO:
+		reset_player_wall_block_state()
+		return
+	if grid_controller.can_move(snake.head_cell, effective_dir):
+		reset_player_wall_block_state()
+		return
+
+	if player_wall_block_cell != snake.head_cell or player_wall_block_dir != effective_dir:
+		player_wall_block_cell = snake.head_cell
+		player_wall_block_dir = effective_dir
+		player_wall_block_time = 0.0
+
+	player_wall_block_time += delta
+	if player_wall_block_time < player_auto_turn_delay:
+		return
+
+	var fallback_dir: Vector2i = choose_player_wall_turn(effective_dir)
+	if fallback_dir == Vector2i.ZERO:
+		return
+
+	# Przy bloku na ścianie wymuś automatyczny skręt, żeby ruch był ciągły.
+	queued_direction = fallback_dir
+	reset_player_wall_block_state()
+
+func reset_player_wall_block_state() -> void:
+	player_wall_block_time = 0.0
+	player_wall_block_dir = Vector2i.ZERO
+	player_wall_block_cell = Vector2i(-1, -1)
+
+func choose_player_wall_turn(blocked_dir: Vector2i) -> Vector2i:
+	var candidates: Array[Vector2i] = [turn_left(blocked_dir), turn_right(blocked_dir)]
+	var available_turns: Array[Vector2i] = []
+	for dir in candidates:
+		if grid_controller.can_move(snake.head_cell, dir):
+			available_turns.append(dir)
+
+	if available_turns.is_empty():
+		return Vector2i.ZERO
+	if available_turns.size() == 1:
+		return available_turns[0]
+	return available_turns.pick_random()
 
 func run_enemy_frame(delta: float) -> void:
 	enemy_moved_this_frame.clear()
@@ -331,7 +381,11 @@ func run_enemy_frame(delta: float) -> void:
 		for _i in range(steps):
 			if not try_advance_snake(enemy):
 				# Blocked/collision step: keep enemy alive, try another direction on next tick.
-				enemy.set_direction(choose_enemy_direction(enemy))
+				var recovery_dir: Vector2i = choose_enemy_direction(enemy)
+				if recovery_dir == Vector2i.ZERO:
+					recovery_dir = choose_enemy_nonblocking_direction(enemy)
+				if recovery_dir != Vector2i.ZERO:
+					enemy.set_direction(recovery_dir)
 				break
 			consume_extension_at_cell(enemy.head_cell, enemy, false)
 		if not is_running:
@@ -348,9 +402,13 @@ func update_enemy_directions() -> void:
 			continue
 		var enemy_index: int = enemy_snakes.find(enemy)
 		var chosen_dir: Vector2i = choose_enemy_direction(enemy, reservation, enemy_index)
+		if chosen_dir == Vector2i.ZERO:
+			chosen_dir = choose_enemy_nonblocking_direction(enemy, reservation)
+		if chosen_dir == Vector2i.ZERO:
+			chosen_dir = enemy.direction
 		enemy.set_direction(chosen_dir)
 		var reserved_head: Vector2i = enemy.head_cell + chosen_dir
-		if grid_controller.can_move(enemy.head_cell, chosen_dir):
+		if chosen_dir != Vector2i.ZERO and grid_controller.can_move(enemy.head_cell, chosen_dir):
 			reservation[reserved_head] = true
 
 func spawn_enemy_snakes() -> void:
@@ -465,7 +523,7 @@ func is_enemy_runtime_valid(enemy: Node2D) -> bool:
 func choose_enemy_direction(enemy: Node2D, reserved_heads: Dictionary = {}, enemy_index: int = -1) -> Vector2i:
 	var current: Vector2i = enemy.direction
 	var candidates: Array[Vector2i] = [current, turn_left(current), turn_right(current), -current]
-	var best_direction: Vector2i = current
+	var best_direction: Vector2i = Vector2i.ZERO
 	var best_score: float = -INF
 	if enemy_index < 0:
 		enemy_index = enemy_snakes.find(enemy)
@@ -485,6 +543,24 @@ func choose_enemy_direction(enemy: Node2D, reserved_heads: Dictionary = {}, enem
 			best_direction = dir
 
 	return best_direction
+
+func choose_enemy_nonblocking_direction(enemy: Node2D, reserved_heads: Dictionary = {}) -> Vector2i:
+	var current: Vector2i = enemy.direction
+	var candidates: Array[Vector2i] = [current, turn_left(current), turn_right(current), -current]
+	for dir in candidates:
+		if dir == Vector2i.ZERO:
+			continue
+		if not grid_controller.can_move(enemy.head_cell, dir):
+			continue
+		var next_head: Vector2i = enemy.head_cell + dir
+		if reserved_heads.has(next_head):
+			continue
+		if enemy_hits_other_enemy(enemy, next_head):
+			continue
+		if enemy.contains_cell(next_head):
+			continue
+		return dir
+	return Vector2i.ZERO
 
 func score_enemy_direction(enemy: Node2D, dir: Vector2i, enemy_index: int) -> float:
 	var next_head: Vector2i = enemy.head_cell + dir
@@ -1036,6 +1112,7 @@ func queue_direction(new_direction: Vector2i) -> void:
 	if new_direction == Vector2i.ZERO:
 		return
 	queued_direction = new_direction
+	reset_player_wall_block_state()
 
 func try_apply_swipe(swipe_delta: Vector2) -> bool:
 	if swipe_delta.length() < swipe_min_distance:

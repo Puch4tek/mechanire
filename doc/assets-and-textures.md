@@ -5,6 +5,7 @@
 - `assets/golona` - tekstury gracza
 - `assets/sobczi` - tekstury enemy
 - `assets/arrows` - grafiki D-pada (`pressed` / `depressed`)
+- `assets/points` - grafiki pickupów punktowych (`pkt1.png` ... `pkt6.png`)
 - `assets/Pickup.wav` - SFX pickupa
 - `assets/Hit1.wav` - SFX zjadania segmentu
 
@@ -35,6 +36,12 @@ W aktualnym układzie D-pad używa `TextureButton` z:
 - stanem wciśniętym (`pressed`).
 
 Skalowanie i pozycję panelu kontroluje `scripts/Game.gd`.
+
+## Pickupy punktów (1..6)
+
+- `Extension` mapuje `value` 1..6 na osobne pliki `assets/points/pktX.png`.
+- Grafiki punktów są większe od kafelka, więc są skalowane proporcjonalnie do `tile_size` (domyślnie 64 px).
+- Render odbywa się przez `Sprite2D`, a `Label`/`Background` są fallbackiem przy braku pliku tekstury.
 
 ## Dobre praktyki importu
 

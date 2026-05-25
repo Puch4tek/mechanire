@@ -6,6 +6,9 @@
 z_index = 15
 script = ExtResource("1_extsc")
 
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=192740552]
+centered = true
+
 [node name="Background" type="ColorRect" parent="." unique_id=1587345371]
 offset_left = -28.0
 offset_top = -28.0

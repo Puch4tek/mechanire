@@ -47,6 +47,7 @@ To daje bardziej stabilne zachowanie, ale bez utraty responsywności.
 - Blokada wejścia enemy w ciało innego enemy.
 - Dopuszczony specjalny swap głów przy idealnym head-to-head (`try_resolve_enemy_head_swap`).
 - Dzięki temu enemy nie stoją na sobie i rzadziej zapętlają się naprzeciwko.
+- Gdy pełny skoring nie znajdzie legalnego ruchu, działa fallback `choose_enemy_nonblocking_direction(...)`, który wybiera pierwszy bezpieczny kierunek bez zajmowania pól innych enemy.
 
 ## Parametry tuningu
 

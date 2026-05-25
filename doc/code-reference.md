@@ -37,6 +37,8 @@ Główny orchestrator gameplayu i stanu kampanii.
 ### Tick ruchu
 
 - `run_player_frame(delta)`
+- `ensure_player_continuous_direction(delta)`
+- `choose_player_wall_turn(blocked_dir)`
 - `run_enemy_frame(delta)`
 - `try_advance_snake(moving_snake)`
 
@@ -44,6 +46,7 @@ Główny orchestrator gameplayu i stanu kampanii.
 
 - `update_enemy_directions()`
 - `choose_enemy_direction(enemy, reserved_heads, enemy_index)`
+- `choose_enemy_nonblocking_direction(enemy, reserved_heads)`
 - `score_enemy_direction(enemy, dir, enemy_index)`
 - `get_enemy_objective(enemy, enemy_index)`
 - `get_nearest_extension_cell(enemy)`
@@ -88,6 +91,11 @@ Główny orchestrator gameplayu i stanu kampanii.
   - `enemy_objective_commit_time`
   - `enemy_objective_by_id`
   - `enemy_objective_until_by_id`
+- auto-skręt gracza:
+  - `player_auto_turn_delay`
+  - `player_wall_block_time`
+  - `player_wall_block_dir`
+  - `player_wall_block_cell`
 
 ### Ultra-API (`GameController`) - tabela
 
@@ -96,10 +104,13 @@ Główny orchestrator gameplayu i stanu kampanii.
 | `start_campaign()` | brak | `void` | resetuje `score`, `current_level_index`, ładuje level 1 |
 | `load_level_by_index(index)` | `index: int` | `bool` | ustawia `current_level_index`, buduje planszę, wywołuje `start_level()` |
 | `start_level()` | brak | `void` | czyści enemy/extensions, resetuje cache AI, spawnuje gracza/enemy/pickup, resetuje UI |
-| `run_player_frame(delta)` | `delta: float` | `void` | zużywa step budget gracza, wykonuje ruchy, konsumuje extensiony |
+| `run_player_frame(delta)` | `delta: float` | `void` | utrzymuje ciągły ruch gracza, zużywa step budget, wykonuje ruchy, konsumuje extensiony |
+| `ensure_player_continuous_direction(delta)` | `delta: float` | `void` | przy blokadzie na wprost po krótkim opóźnieniu wymusza auto-skręt, aktualizuje `queued_direction` |
+| `choose_player_wall_turn(blocked_dir)` | `blocked_dir: Vector2i` | `Vector2i` | wybiera losowo legalny kierunek z kandydatów lewo/prawo |
 | `run_enemy_frame(delta)` | `delta: float` | `void` | zużywa step budget enemy, wykonuje ruchy AI, konsumuje extensiony |
 | `update_enemy_directions()` | brak | `void` | aktualizuje kierunki enemy z rezerwacją pól i cleanup cache |
 | `choose_enemy_direction(enemy, reserved_heads, enemy_index)` | `Node2D`, `Dictionary`, `int` | `Vector2i` | brak bezpośrednich, wylicza kierunek najlepszego ruchu |
+| `choose_enemy_nonblocking_direction(enemy, reserved_heads)` | `Node2D`, `Dictionary` | `Vector2i` | fallback: wybiera legalny ruch, który nie wchodzi w pola innych enemy |
 | `score_enemy_direction(enemy, dir, enemy_index)` | `Node2D`, `Vector2i`, `int` | `float` | brak; liczy wynik heurystyki |
 | `get_enemy_objective(enemy, enemy_index)` | `Node2D`, `int` | `Dictionary` | zapisuje/odświeża commit celu w cache |
 | `try_advance_snake(moving_snake)` | `Node2D` | `bool` | może eliminować węże, zmieniać `score`, wywoływać grow/shrink |
@@ -239,11 +250,13 @@ Model pickupa extension.
 ### Public API
 
 - `setup(grid_cell, v, maze_offset, tile_size)`
+- `apply_point_visual(tile_size)`
 
 ### Dane
 
 - `value`
 - `cell`
+- `POINT_TEXTURES` (mapowanie `1..6` -> `assets/points/pktX.png`)
 
 ---
 
